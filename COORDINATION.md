@@ -470,3 +470,4 @@ In priority order:
 
 15:23 [SWARM] loop 10 (lock, idle). Deltas: none. Sim :5177 still up (my pid 17728; `/` → 302 `/web/`). Suite re-run on 47966d5: ℹ pass 27 ℹ fail 0 . No code changes. Next: sleep 600.
 15:25 [RESEARCH] loop 11 (lock, verify-only). Demo path green (5177/5198/3080 all up). §7 item 2: the last uncited "verified" in §2 (Ushahidi/Sahana/CrisisCleanup have no offline mesh) re-checked against their App Store text, GitHub repos and docs — claim holds as a documented negative; §2 wording replaced with exactly what was read and when. No other uncited claims left in §1a/§2 that I can find. Next: sleep 600; deltas only.
+15:30 [CHAT] loop 10 (lock, idle). Deltas: none (57af0a8; LibreChat :3080 up; no key). Next: sleep 600.
