@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-08-28T20:27:14.355Z",
+  "guard_layer": {
+    "status": "covered by rule1.test.ts (node --test apps/chat/guard/rule1.test.ts)"
+  },
+  "live_model_layer": {
+    "status": "UNVERIFIED — no INFERENCE_API_KEY or ANTHROPIC_API_KEY in environment"
+  },
+  "prompts": 18
+}
