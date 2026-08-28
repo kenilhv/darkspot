@@ -44,6 +44,10 @@ const GERUND_ALT = DISPATCH_VERBS.map((v) =>
 // Optional leading softeners / adverbs before the verb
 const PRE = String.raw`(?:(?:please|immediately|now|urgently|quickly|first|then|also|just|definitely|absolutely|all|everyone|somebody|someone)\s+)*`;
 
+// D-20 placement vocabulary (past participles that place people/resources; resource nouns)
+const PLACE_PP = "(?:positioned|deployed|sent|stationed|routed|used|placed|allocated|assigned|dispatched|concentrated|committed|prioriti[sz]ed|redirected|moved)";
+const RES = "(?:teams?|crews?|units?|boats?|drones?|resources?|supplies|volunteers?|responders?|rescuers?|vehicles?|helicopters?|medics?|people)";
+
 const PATTERNS: { name: string; re: RegExp }[] = [
   {
     // Bare sentence-initial imperative: "Send two teams to Chitwan."
@@ -88,6 +92,58 @@ const PATTERNS: { name: string; re: RegExp }[] = [
     name: "prescriptive-copula",
     re: new RegExp(
       String.raw`\b(?:best|right|correct|top|first|next|only|immediate)\s+(?:move|step|action|priority|call|thing)\b[^.!?\n]*?\b(?:is|would\s+be|:)\s*(?:to\s+)?${PRE}(?:${VERB_ALT})\b`,
+      "i",
+    ),
+  },
+  // ---- D-20: placement-by-description (paraphrase / passive voice). Each form below names
+  // WHERE people or resources belong without an imperative verb. Only unambiguous forms are
+  // included; ordered bare lists ("Ward 4 first, then Mugling") stay on the documented miss list
+  // in rule1.test.ts because the same words legitimately describe an evidence ranking.
+  {
+    // "a team would be best positioned at X", "boats ought to be routed via Y", "teams are to be deployed to Z".
+    // Past tense (was/were) is deliberately excluded: "the team was positioned at the school" is a report of fact.
+    name: "placement-passive",
+    re: new RegExp(
+      String.raw`\b(?:be|are|is|get|gets)\s+(?:to\s+be\s+)?(?:best\s+|better\s+|first\s+|next\s+|immediately\s+)?${PLACE_PP}\s+(?:at|to|in|via|through|near|toward|towards|on|along|around)\b`,
+      "i",
+    ),
+  },
+  {
+    // "the first team needs to be at X", "X is where the team belongs", "boats belong at the sandbar"
+    name: "placement-belongs",
+    re: new RegExp(
+      String.raw`\b(?:needs?\s+to\s+be|has\s+to\s+be|have\s+to\s+be|must\s+be|should\s+be|ought\s+to\s+be|belongs?)\s+(?:at|in|near|on|over|up|down)\b|\bis\s+where\s+(?:the\s+|a\s+|our\s+)?(?:first\s+|next\s+|second\s+)?${RES}\s+(?:belongs?|goes|should\s+be|needs?\s+to\s+be)\b`,
+      "i",
+    ),
+  },
+  {
+    // "resources are needed at X first", "boats are required in Y now"
+    name: "placement-needed-first",
+    re: new RegExp(String.raw`\b(?:are|is)\s+(?:urgently\s+|most\s+)?(?:needed|required|wanted)\s+(?:at|in|near|on)\b[^.!?\n]*\b(?:first|now|next|immediately|before)\b`, "i"),
+  },
+  {
+    // "X should be next", "Y should go first", "Z is next for the boats"
+    name: "placement-ordinal",
+    re: new RegExp(String.raw`\b(?:should|must|ought\s+to)\s+(?:be|go|come)\s+(?:next|first|second|third)\b|\bis\s+(?:next|first)\s+(?:for|in\s+line\s+for)\s+(?:the\s+)?${RES}\b`, "i"),
+  },
+  {
+    // "X is the priority for the next deployment", "the obvious place for the boats is Y", "the second team is best used at Z"
+    name: "placement-copula",
+    re: new RegExp(
+      String.raw`\bpriority\s+for\s+(?:the\s+)?(?:next\s+|first\s+)?(?:deployment|dispatch|team|crew|unit|boats?|drones?|response)\b|\b(?:place|spot|location|destination|target)\s+for\s+(?:the\s+|our\s+)?${RES}\s+(?:is|would\s+be|should\s+be)\b|\bbest\s+used\s+(?:at|in|on|near)\b`,
+      "i",
+    ),
+  },
+  {
+    // "if I were you, Ward 4 would get the first team"
+    name: "placement-gets",
+    re: new RegExp(String.raw`\b(?:would|will|should)\s+get\s+(?:the\s+|a\s+|an\s+)?(?:first\s+|next\s+|second\s+)?${RES}\b`, "i"),
+  },
+  {
+    // "it would make sense for the crew to head to X", "consider Ward 4 for the first team"
+    name: "placement-suggestion",
+    re: new RegExp(
+      String.raw`\bfor\s+(?:the\s+|a\s+|our\s+)?${RES}\s+to\s+(?:head|go|move|proceed|travel|drive|fly|walk|be\s+sent|be\s+deployed)\s+(?:to|toward|towards|for|up|down|there)\b|^(?:please\s+)?consider\s+[^.!?\n]*\bfor\s+(?:the\s+|a\s+)?(?:first\s+|next\s+|second\s+)?${RES}\b`,
       "i",
     ),
   },

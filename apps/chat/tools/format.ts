@@ -138,10 +138,14 @@ export interface RouteRow extends Row {
   computed_at?: string;
 }
 
+/** SWARM's allocation note, carried verbatim (D-20): swarm/src/allocation.js on agent/swarm. */
+export const SWARM_ALLOCATION_NOTE = "Suggested unit/task pairings from a simulation. Not a dispatch order; requires human review before any action.";
+
 export function formatRoutePlan(fleetSize: number, rows: RouteRow[], source: string): string {
   const header =
     `SIMULATION ONLY — the following route plan for a fleet of ${fleetSize} is a simulation (is_simulation = true in ${source}, enforced by CHECK constraint). ` +
-    `No drone is flying. It has not been deconflicted with any airspace authority (§1a Rule 4).`;
+    `No drone is flying. It has not been deconflicted with any airspace authority (§1a Rule 4).\n` +
+    `SWARM's own note on every allocation it produces: "${SWARM_ALLOCATION_NOTE}"`;
   if (rows.length === 0) return `${header}\n\nNo simulated routes exist in ${source} for fleet_size = ${fleetSize}.`;
   const bad = rows.filter((r) => r.is_simulation !== true);
   if (bad.length) {

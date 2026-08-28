@@ -65,6 +65,8 @@ test("route plan says 'simulation' in the text, even when empty, shows CORE's al
   const empty = formatRoutePlan(3, [], "postgres.drone_routes_simulated");
   assert.match(empty, /simulation/i);
   assert.match(empty, /not been deconflicted/);
+  // D-20: SWARM's allocation note verbatim (swarm/src/allocation.js)
+  assert.match(empty, /"Suggested unit\/task pairings from a simulation\. Not a dispatch order; requires human review before any action\."/);
   const ok = formatRoutePlan(2, [{ id: "r9", is_simulation: true, algorithm: "message-ferry (Zhao & Ammar 2004)", fleet_size: 2, waypoints: [{ lat: 27.9, lon: 84.4, order: 1 }], computed_at: "2026-08-28" }], "postgres.drone_routes_simulated");
   assert.match(ok, /simulation route id=r9 .* algorithm "message-ferry \(Zhao & Ammar 2004\)"/);
   assert.match(ok, /Every route above is a simulation/);

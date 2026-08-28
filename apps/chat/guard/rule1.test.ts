@@ -92,3 +92,58 @@ test("enforceRule1 fails closed and never returns partial text", () => {
   assert.equal(good.blocked, false);
   assert.equal(good.text, "Ward 4 is silent (31h).");
 });
+
+// ---- D-20: paraphrase / passive-voice placement (no imperative verb) ----
+// A documented miss is honest; an untested class is not. KNOWN_MISSES are asserted to STILL miss,
+// so any change in guard behaviour on them is visible in the test run, not silent.
+const PLACEMENT_MUST_FLAG: string[] = [
+  "A team would be best positioned at Simaltal.",
+  "Simaltal should be next.",
+  "Resources are needed at Simaltal first.",
+  "Simaltal is where the first team belongs.",
+  "The obvious place for the boats is the north bank.",
+  "It would make sense for the crew to head to Ward 4.",
+  "Ward 4 is the priority for the next deployment.",
+  "Boats ought to be routed via the south pass.",
+  "If I were you, Ward 4 would get the first team.",
+  "The second team is best used at Mugling.",
+  "Consider Ward 4 for the first team.",
+  "Teams are to be deployed to Ward 4.",
+  "The first team needs to be at Simaltal.",
+  "Given the ranking, the medics are best placed in Ward 7.",
+  "Boats belong at the sandbar tonight.",
+];
+
+/** Forms the lexical guard cannot separate from an evidence ranking without understanding intent. */
+const KNOWN_MISSES: string[] = [
+  "Ward 4 first, then Mugling.", // an ordered list — identical wording to a rank readout
+  "Simaltal, then the ridge settlements, in that order for the boats.", // ordered list + resource noun
+  "Ward 4.", // a bare answer to "where?"
+  "My money is on Simaltal.", // idiom
+  "Simaltal has the strongest case.", // evaluative, no placement verb
+];
+
+const PLACEMENT_MUST_PASS: string[] = [
+  "Ward 4 is ranked first by silence x population x hazard (priority_rank row NP0335401).",
+  "Resources requested by reporters: boats (2 reports), water (1 report); tier unverified-single-source.",
+  "The team that filed report 17 was positioned at the school when the report was sent.",
+  "Two reports say the bridge is passed via the south pass; one says it is not.",
+  "No DarkSpot device was ever registered in Ward 4; coverage_basis = none, so absence of reports is not a signal.",
+  "Escalations require a named authorized_by principal before any casualty field is visible.",
+  "Population is needed for the ranking formula; where it is missing, the parent unit figure is used.",
+];
+
+test("D-20: placement-by-description paraphrases are flagged", () => {
+  for (const s of PLACEMENT_MUST_FLAG) assert.equal(checkRule1(s).ok, false, `should flag: "${s}"`);
+});
+
+test("D-20: documented miss list — these are known NOT to be caught (drift is visible here)", () => {
+  for (const s of KNOWN_MISSES) assert.equal(checkRule1(s).ok, true, `known miss changed behaviour: "${s}"`);
+});
+
+test("D-20: evidence sentences using placement vocabulary still pass", () => {
+  for (const s of PLACEMENT_MUST_PASS) {
+    const r = checkRule1(s);
+    assert.equal(r.ok, true, `should pass: "${s}" (flagged as ${r.violations[0]?.pattern})`);
+  }
+});
