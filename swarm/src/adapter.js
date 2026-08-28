@@ -48,7 +48,7 @@ export function scenarioFromPriorityRank(rows, { width = 900, height = 560, rang
     return {
       id: r.settlement_pcode, name: r.settlement_name, adminUnitId: r.settlement_pcode, x, y,
       lat: r.centroid_lat, lon: r.centroid_lon,
-      silenceHours: r.silence_hours, neverHeard: !!r.never_heard, population: r.population_used, populationBasis: r.population_basis,
+      silenceHours: r.silence_hours, neverHeard: !!r.never_heard, coverageBasis: r.coverage_basis ?? 'none', reportCount: r.report_count ?? 0, population: r.population_used, populationBasis: r.population_basis,
       hazard: r.hazard_exposure, rank: r.rank, priorityScore: r.priority_score,
       // allocation cost uses `priority` (cost = distance / priority): rescale CORE's score to (0, 10] so
       // the relative ordering is CORE's, and the magnitude is comparable across events

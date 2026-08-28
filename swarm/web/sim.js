@@ -6,14 +6,31 @@
 import { buildScenario, SimEngine } from '../src/engine.js';
 import { scenarioFromPriorityRank } from '../src/adapter.js';
 
-const C = {
-  bg: '#171A1F', grid: 'rgba(255,255,255,0.04)',
-  bridge: '#62B4C0', relay: '#E6B24C', unit: '#7FB0FF' /* sky-300: unreserved (verdant = human-verified only, D-16) */, settlement: '#85817A',
-  link: 'rgba(139,145,155,0.35)', linkStrong: 'rgba(139,145,155,0.8)',
-  route: '#62B4C0', routeBase: '#8B919B', packet: '#FFFFFF', ferry: '#E477BF', label: '#F7F6F2',
-  silence: ['#F3F1EC', '#DBD8E3', '#B9B2CF', '#918AB4', '#665D91', '#3E3568', '#1C1740'], silenceRing: '#8F959E',
-  particle: 'rgba(230,178,76,0.25)', range: 'rgba(230,178,76,0.08)', flash: '#FFFFFF',
+// Embedded mirror of @darkspot/ui tokens.json `sim` + `palette.dusk` (DESIGN 5a937ba). If DESIGN's
+// build-free export is reachable at /packages/ui/tokens.json (post-merge), it overrides these at load;
+// test/tokens.test.js fails if this mirror drifts from agent/design-system's tokens.json.
+export const EMBEDDED_TOKENS = {
+  sim: { canvasBg: '#171A1F', grid: 'rgba(255,255,255,0.04)', nodeBridge: '#62B4C0', nodeRelay: '#E6B24C', nodeUnit: '#7FB0FF', nodeSettlement: '#85817A',
+    link: 'rgba(139,145,155,0.35)', linkStrong: 'rgba(139,145,155,0.8)', route: '#62B4C0', routeBaseline: '#8B919B', packet: '#FFFFFF',
+    pairHungarian: '#7FB0FF', pairAuction: '#7FB0FF', droneRoute: '#E477BF', label: '#F7F6F2', silenceRing: '#8F959E' },
+  dusk: ['#F3F1EC', '#DBD8E3', '#B9B2CF', '#918AB4', '#665D91', '#3E3568', '#1C1740'],
 };
+const C = { particle: 'rgba(230,178,76,0.25)', range: 'rgba(230,178,76,0.08)', flash: '#FFFFFF', hazard: '#EF8A66' };
+function applyTokens(t) {
+  const sim = t.sim, dusk = t.palette?.dusk ?? t.dusk;
+  Object.assign(C, { bg: sim.canvasBg, grid: sim.grid, bridge: sim.nodeBridge, relay: sim.nodeRelay, unit: sim.nodeUnit, settlement: sim.nodeSettlement,
+    link: sim.link, linkStrong: sim.linkStrong, route: sim.route, routeBase: sim.routeBaseline, packet: sim.packet,
+    pairH: sim.pairHungarian, pairA: sim.pairAuction, ferry: sim.droneRoute, label: sim.label, silence: dusk, silenceRing: sim.silenceRing });
+}
+applyTokens(EMBEDDED_TOKENS);
+try { const r = await fetch('/packages/ui/tokens.json'); if (r.ok) { applyTokens(await r.json()); C.tokenSource = '@darkspot/ui tokens.json'; } } catch { /* embedded mirror stays */ }
+function coverageText(s) {
+  const h = Math.round(s.silenceHours);
+  if (s.coverageBasis === undefined) return `${h}h (scenario value)`;                       // synthetic scenario
+  if (s.coverageBasis === 'device_sighted_before_activation') return `silent ${h}h`;
+  if (s.coverageBasis === 'device_sighted_after_activation') return `reachable, no report ${h}h`;
+  return 'no report · no coverage evidence';
+}
 const silenceStep = (h) => { let s = 0; for (const e of [1, 3, 6, 12, 24, 48]) if (h >= e) s++; return Math.min(s, 6); };
 
 const $ = (id) => document.getElementById(id);
@@ -122,7 +139,7 @@ function draw(now) {
       const u = snap.units.find((x) => x.id === p.unitId), t = sc.settlements.find((s) => s.id === p.taskId);
       if (!u || !t) continue;
       const flashing = (flashUntil.get(p.unitId) ?? 0) > now;
-      polyline([u, t], { color: flashing ? C.flash : C.unit, width: flashing ? 3 : 1.5, dash: p.mode === 'auction' ? [2, 4] : [] });
+      polyline([u, t], { color: flashing ? C.flash : (p.mode === 'auction' ? C.pairA : C.pairH), width: flashing ? 3 : 1.5, dash: p.mode === 'auction' ? [3, 3] : [] });
       if (flashing) { ctx.strokeStyle = C.flash; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t.x, t.y, 16 + 6 * Math.sin(now / 120), 0, Math.PI * 2); ctx.stroke(); }
     }
     // relays
@@ -141,13 +158,16 @@ function draw(now) {
     const st = silenceStep(s.silenceHours);
     ctx.fillStyle = C.silence[st]; ctx.strokeStyle = st >= 4 ? C.silenceRing : C.settlement; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(s.x, s.y, 6 + Math.min(6, s.priority), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    if (s.hazard === 'high') { ctx.strokeStyle = '#EF8A66'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(s.x, s.y, 10 + Math.min(6, s.priority), 0, Math.PI * 2); ctx.stroke(); }
-    if (!s.rank || s.rank <= 12) label(`${s.name ?? s.id} ${Math.round(s.silenceHours)}h${s.neverHeard ? ' · never heard' : ''}`, s.x + 14, s.y, '#B9B2CF');
+    if (s.hazard === 'high') { ctx.strokeStyle = C.hazard; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(s.x, s.y, 10 + Math.min(6, s.priority), 0, Math.PI * 2); ctx.stroke(); }
+    // D-18: only device_sighted_before_activation licenses the word "silent"; otherwise it is absence of data.
+    const paired = snap.alloc?.suggested_pairings.some((p) => p.taskId === s.id);
+    if (!s.rank || s.rank <= 8 || paired) label(`${s.name ?? s.id} · ${coverageText(s)}`, s.x + 14, s.y, '#B9B2CF');
   }
   // bridge
   ctx.fillStyle = C.bridge; ctx.fillRect(sc.bridge.x - 9, sc.bridge.y - 9, 18, 18); label('bridge', sc.bridge.x + 14, sc.bridge.y, C.bridge);
   // canvas-level simulation stamp (never removable)
-  label('SIMULATION · synthetic seeded scenario · no aircraft, no instructions', W - 12, 16, C.ferry, 'right');
+  label(engine.sc.meta ? 'SIMULATION · real HDX units + CORE ranks; relays/routing/allocation simulated · no aircraft, no instructions'
+                       : 'SIMULATION · synthetic seeded scenario · no aircraft, no instructions', W - 12, 16, C.ferry, 'right');
 }
 
 // ---------------------------------------------------------------- panels
@@ -156,6 +176,7 @@ function updatePanels() {
   $('phase').textContent = snap.phase === 'placing' ? 'phase: placing relays (PSO)' : 'phase: mesh formed · routing + allocation live';
   const st = $('stats'); st.innerHTML = '';
   const add = (k, v) => { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; st.append(dt, dd); };
+  if (C.tokenSource) add('tokens', C.tokenSource);
   if (engine.sc.meta) add('data', `${engine.sc.meta.rows}/${engine.sc.meta.of} CORE priority_rank rows · range ${engine.sc.meta.rangeKm} km (scenario parameter, not measured) · ${engine.sc.meta.pxPerKm.toFixed(1)} px/km`);
   else add('data', 'synthetic seeded scenario');
   add('relay fitness', `${snap.psoFitness.toFixed(3)} · SGC ${snap.psoEval.sgc}/${engine.sc.relayCount} · covered ${snap.psoEval.ncmc}/${engine.sc.settlements.length}`);
