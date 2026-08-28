@@ -1,0 +1,348 @@
+/* ==========================================================================
+   DarkSpot — design tokens (source of truth: design/tokens.md)
+   Prefix: --ds-.  Layers: primitive ramps -> semantic (--ds-color-*, --ds-tier-*,
+   --ds-silence-*, --ds-sim-*). Apps consume SEMANTIC tokens, never raw hex.
+   Themes: light is the default (:root). Dark is opt-in via [data-theme="dark"]
+   (the swarm visualization page sets it) or the OS preference when
+   [data-theme="auto"] is set. Every semantic pair is contrast-checked by
+   scripts/check-contrast.mjs in BOTH themes — run it before changing a step.
+   ========================================================================== */
+
+:root {
+  /* ---------- Primitives ---------- */
+  /* Neutrals — warm-white "slate paper" up top, cool near-black "ink" below. */
+  --ds-n-0:   #F7F6F2;
+  --ds-n-1:   #FFFFFF;
+  --ds-n-2:   #EFEDE8;
+  --ds-n-3:   #E5E2DB;
+  --ds-n-4:   #D9D6CE;
+  --ds-n-5:   #85817A;
+  --ds-n-6:   #8B919B;
+  --ds-n-7:   #646A73;
+  --ds-n-8:   #454A52;
+  --ds-n-9:   #262B33;
+  --ds-n-10:  #1E2229;
+  --ds-n-11:  #171A1F;
+  --ds-n-12:  #0F1114;
+
+  /* Beacon — interactive / links / mesh links. A cool teal-blue: it is not the
+     colour of any evidence state, so "clickable" never competes with "verified". */
+  --ds-beacon-50:  #E3F1F3;
+  --ds-beacon-100: #BFE0E5;
+  --ds-beacon-300: #62B4C0;
+  --ds-beacon-500: #1F8A9B;
+  --ds-beacon-600: #16707F;
+  --ds-beacon-700: #0F5560;
+  --ds-beacon-900: #073038;
+
+  /* Verdant — ONLY "human-verified". Never used for success toasts, buttons, or brand. */
+  --ds-verdant-50:  #E4F3E8;
+  --ds-verdant-100: #BFE3C9;
+  --ds-verdant-300: #63B77F;
+  --ds-verdant-500: #24864A;
+  --ds-verdant-600: #1B6E3B;
+  --ds-verdant-900: #0B3A1D;
+
+  /* Ember — hazard exposure and destructive actions. */
+  --ds-ember-50:  #FCEBE4;
+  --ds-ember-100: #F8CCBD;
+  --ds-ember-300: #EF8A66;
+  --ds-ember-500: #D4502A;
+  --ds-ember-600: #B23F1E;
+  --ds-ember-900: #5F1F0C;
+
+  /* Amber — attention: staleness approaching, conflicts, "needs a human". Not an error. */
+  --ds-amber-50:  #FBF1DC;
+  --ds-amber-100: #F5DDA8;
+  --ds-amber-300: #E6B24C;
+  --ds-amber-500: #B8790F;
+  --ds-amber-600: #96600A;
+  --ds-amber-900: #4F3204;
+
+  /* Magenta — SIMULATION ONLY (Rule 4). Deliberately unlike any map/ops convention
+     so a simulated drone route can never be mistaken for a real one. */
+  --ds-sim-50:  #FBE7F3;
+  --ds-sim-100: #F5C3E2;
+  --ds-sim-300: #E477BF;
+  --ds-sim-500: #C0308F;
+  --ds-sim-600: #A0217A;
+  --ds-sim-900: #56103F;
+
+  /* Dusk — the silence ramp. Sequential, 0 = confirmed recently, 6 = longest silence.
+     Literal "dark spot": silence gets darker, never redder (red is hazard). */
+  --ds-dusk-0: #F3F1EC;
+  --ds-dusk-1: #DBD8E3;
+  --ds-dusk-2: #B9B2CF;
+  --ds-dusk-3: #918AB4;
+  --ds-dusk-4: #665D91;
+  --ds-dusk-5: #3E3568;
+  --ds-dusk-6: #1C1740;
+
+  /* Sky — keyboard focus ring only. Not beacon, so focus never reads as "selected". */
+  --ds-sky-500: #2F6FEB;
+  --ds-sky-300: #7FB0FF;
+
+  /* ---------- Semantic: surfaces & text (light) ---------- */
+  --ds-color-bg:              var(--ds-n-0);
+  --ds-color-bg-raised:       var(--ds-n-1);
+  --ds-color-bg-sunken:       var(--ds-n-2);
+  --ds-color-bg-well:         var(--ds-n-3);
+  --ds-color-border:          var(--ds-n-4);
+  --ds-color-border-strong:   var(--ds-n-5);
+  --ds-color-text:            var(--ds-n-10);
+  --ds-color-text-secondary:  var(--ds-n-8);
+  --ds-color-text-muted:      var(--ds-n-7);
+  --ds-color-text-display:    var(--ds-n-12);
+  --ds-color-text-on-accent:  #FFFFFF;
+
+  --ds-color-accent:             var(--ds-beacon-600);
+  --ds-color-accent-hover:       var(--ds-beacon-700);
+  --ds-color-accent-active:      var(--ds-beacon-900);
+  --ds-color-accent-soft:        var(--ds-beacon-50);
+  --ds-color-accent-soft-border: var(--ds-beacon-100);
+  --ds-color-link:               var(--ds-beacon-600);
+
+  --ds-color-attention:             var(--ds-amber-600);
+  --ds-color-attention-soft:        var(--ds-amber-50);
+  --ds-color-attention-soft-border: var(--ds-amber-100);
+  --ds-color-hazard:                var(--ds-ember-600);
+  --ds-color-hazard-hover:          var(--ds-ember-900);
+  --ds-color-hazard-soft:           var(--ds-ember-50);
+  --ds-color-hazard-soft-border:    var(--ds-ember-100);
+  --ds-color-focus:                 var(--ds-sky-500);
+
+  /* ---------- Semantic: evidence confidence tiers (§2 mv_corroboration) ----------
+     Three tiers, never collapsed into one number. Each has a fill, a border and an
+     ink. Components ALSO encode the tier with a glyph (○ / ◐ / ●) so colour is never
+     the only carrier. */
+  --ds-tier-unverified-ink:      var(--ds-n-7);
+  --ds-tier-unverified-fill:     var(--ds-n-2);
+  --ds-tier-unverified-border:   var(--ds-n-5);
+  --ds-tier-corroborated-ink:    var(--ds-beacon-600);
+  --ds-tier-corroborated-fill:   var(--ds-beacon-50);
+  --ds-tier-corroborated-border: var(--ds-beacon-100);
+  --ds-tier-verified-ink:        var(--ds-verdant-600);
+  --ds-tier-verified-fill:       var(--ds-verdant-50);
+  --ds-tier-verified-border:     var(--ds-verdant-100);
+
+  /* Stale / unknown (§2 mv_staleness): explicitly "unknown, needs re-verification".
+     Drawn with a dashed border + hatch, never a solid status colour. */
+  --ds-stale-ink:    var(--ds-n-7);
+  --ds-stale-fill:   transparent;
+  --ds-stale-border: var(--ds-n-5);
+  --ds-stale-hatch:  repeating-linear-gradient(135deg, transparent 0 4px, var(--ds-n-4) 4px 5px);
+
+  /* Conflict (§2 mv_conflicts): shown side-by-side, amber = "a human needs to look". */
+  --ds-conflict-ink:    var(--ds-amber-600);
+  --ds-conflict-fill:   var(--ds-amber-50);
+  --ds-conflict-border: var(--ds-amber-500);
+
+  /* Simulation (Rule 4): magenta + diagonal stripes. Both carriers, always. */
+  --ds-simulation-ink:    var(--ds-sim-600);
+  --ds-simulation-fill:   var(--ds-sim-50);
+  --ds-simulation-border: var(--ds-sim-500);
+  --ds-simulation-stripe: repeating-linear-gradient(45deg, var(--ds-sim-500) 0 6px, transparent 6px 12px);
+
+  /* Silence scale — semantic aliases of the dusk ramp plus the text colour that is
+     legible on each step (steps 0–3 take dark ink, 4–6 take light ink). */
+  --ds-silence-0: var(--ds-dusk-0);
+  --ds-silence-1: var(--ds-dusk-1);
+  --ds-silence-2: var(--ds-dusk-2);
+  --ds-silence-3: var(--ds-dusk-3);
+  --ds-silence-4: var(--ds-dusk-4);
+  --ds-silence-5: var(--ds-dusk-5);
+  --ds-silence-6: var(--ds-dusk-6);
+  --ds-silence-ink-on-low:  var(--ds-n-10);
+  --ds-silence-ink-on-high: var(--ds-n-0);
+  /* On dark surfaces the deep end of the ramp needs an outline to stay visible. */
+  --ds-silence-ring: transparent;
+
+  /* ---------- Semantic: swarm simulation canvas (SWARM's D3/canvas sim) ---------- */
+  --ds-sim-canvas-bg:       var(--ds-n-11);
+  --ds-sim-canvas-grid:     rgba(255, 255, 255, 0.04);
+  --ds-sim-node-bridge:     var(--ds-beacon-300);   /* bridge node (has backhaul) */
+  --ds-sim-node-relay:      var(--ds-amber-300);    /* relay / mesh device */
+  --ds-sim-node-unit:       var(--ds-verdant-300);  /* taskforce unit */
+  --ds-sim-node-settlement: var(--ds-n-5);          /* settlement ring (fill = silence step) */
+  --ds-sim-link:            rgba(139, 145, 155, 0.35);
+  --ds-sim-link-strong:     rgba(139, 145, 155, 0.8);
+  --ds-sim-route:           var(--ds-beacon-300);   /* pheromone-reinforced path */
+  --ds-sim-route-baseline:  var(--ds-n-6);          /* AODV baseline path */
+  --ds-sim-packet:          #FFFFFF;
+  --ds-sim-drone-route:     var(--ds-sim-300);      /* ALWAYS dashed + labeled "SIMULATION" */
+  --ds-sim-label:           var(--ds-n-0);
+
+  /* ---------- Typography ---------- */
+  --ds-font-ui:   "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ds-font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --ds-text-xs:  0.75rem;   /* 12 */
+  --ds-text-sm:  0.875rem;  /* 14 */
+  --ds-text-md:  1rem;      /* 16 */
+  --ds-text-lg:  1.125rem;  /* 18 */
+  --ds-text-xl:  1.375rem;  /* 22 */
+  --ds-text-2xl: 1.75rem;   /* 28 */
+  --ds-text-3xl: 2.25rem;   /* 36 */
+  --ds-text-4xl: 3rem;      /* 48 */
+  --ds-leading-tight:  1.15;
+  --ds-leading-snug:   1.3;
+  --ds-leading-normal: 1.5;
+  --ds-leading-loose:  1.65;
+  --ds-tracking-tight: -0.015em;
+  --ds-tracking-wide:  0.06em;
+  --ds-weight-regular: 400;
+  --ds-weight-bold:    700;
+
+  /* ---------- Spacing (4px base), radius, elevation ---------- */
+  --ds-space-1: 4px;  --ds-space-2: 8px;  --ds-space-3: 12px; --ds-space-4: 16px;
+  --ds-space-5: 20px; --ds-space-6: 24px; --ds-space-8: 32px; --ds-space-10: 40px;
+  --ds-space-12: 48px; --ds-space-16: 64px;
+  --ds-radius-sm: 4px; --ds-radius-md: 8px; --ds-radius-lg: 12px; --ds-radius-xl: 20px; --ds-radius-full: 9999px;
+  --ds-shadow-color: 30, 34, 41;
+  --ds-shadow-xs: 0 1px 2px rgba(var(--ds-shadow-color), 0.06);
+  --ds-shadow-sm: 0 1px 2px rgba(var(--ds-shadow-color), 0.06), 0 2px 6px rgba(var(--ds-shadow-color), 0.06);
+  --ds-shadow-md: 0 2px 4px rgba(var(--ds-shadow-color), 0.06), 0 8px 20px rgba(var(--ds-shadow-color), 0.10);
+  --ds-shadow-lg: 0 4px 8px rgba(var(--ds-shadow-color), 0.08), 0 20px 48px rgba(var(--ds-shadow-color), 0.18);
+
+  /* ---------- Focus, motion, layout ---------- */
+  --ds-focus-ring: 0 0 0 2px var(--ds-color-bg), 0 0 0 4px var(--ds-color-focus);
+  --ds-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ds-dur-fast: 120ms; --ds-dur-base: 180ms; --ds-dur-slow: 280ms;
+  --ds-container: 1360px; --ds-sidebar: 272px; --ds-topbar: 56px; --ds-measure: 68ch;
+  --ds-touch-target: 44px;   /* field use: gloves, rain, one hand */
+  color-scheme: light;
+}
+
+/* ---------- Dark theme (swarm visualization page default; opt-in elsewhere) ----------
+   Kept as one block; [data-theme="auto"] mirrors it under the OS preference below.
+   scripts/check-contrast.mjs reads the [data-theme="dark"] block. */
+[data-theme="dark"] {
+  --ds-color-bg:              var(--ds-n-12);
+  --ds-color-bg-raised:       var(--ds-n-11);
+  --ds-color-bg-sunken:       var(--ds-n-10);
+  --ds-color-bg-well:         var(--ds-n-9);
+  --ds-color-border:          #2E343D;
+  --ds-color-border-strong:   #5C6470;
+  --ds-color-text:            #E6E8EB;
+  --ds-color-text-secondary:  #B4B9C1;
+  --ds-color-text-muted:      #8F959E;
+  --ds-color-text-display:    #F4F5F7;
+  --ds-color-text-on-accent:  var(--ds-n-12);
+
+  --ds-color-accent:             var(--ds-beacon-300);
+  --ds-color-accent-hover:       #7FC5CF;
+  --ds-color-accent-active:      #9FD6DE;
+  --ds-color-accent-soft:        rgba(98, 180, 192, 0.12);
+  --ds-color-accent-soft-border: rgba(98, 180, 192, 0.35);
+  --ds-color-link:               var(--ds-beacon-300);
+
+  --ds-color-attention:             var(--ds-amber-300);
+  --ds-color-attention-soft:        rgba(230, 178, 76, 0.12);
+  --ds-color-attention-soft-border: rgba(230, 178, 76, 0.35);
+  --ds-color-hazard:                var(--ds-ember-300);
+  --ds-color-hazard-hover:          #F6A98D;
+  --ds-color-hazard-soft:           rgba(239, 138, 102, 0.12);
+  --ds-color-hazard-soft-border:    rgba(239, 138, 102, 0.35);
+  --ds-color-focus:                 var(--ds-sky-300);
+
+  --ds-tier-unverified-ink:      #A5AAB3;
+  --ds-tier-unverified-fill:     var(--ds-n-10);
+  --ds-tier-unverified-border:   #5C6470;
+  --ds-tier-corroborated-ink:    var(--ds-beacon-300);
+  --ds-tier-corroborated-fill:   rgba(98, 180, 192, 0.12);
+  --ds-tier-corroborated-border: rgba(98, 180, 192, 0.45);
+  --ds-tier-verified-ink:        var(--ds-verdant-300);
+  --ds-tier-verified-fill:       rgba(99, 183, 127, 0.12);
+  --ds-tier-verified-border:     rgba(99, 183, 127, 0.45);
+
+  --ds-stale-ink:    #A5AAB3;
+  --ds-stale-border: #5C6470;
+  --ds-stale-hatch:  repeating-linear-gradient(135deg, transparent 0 4px, #2E343D 4px 5px);
+
+  --ds-conflict-ink:    var(--ds-amber-300);
+  --ds-conflict-fill:   rgba(230, 178, 76, 0.12);
+  --ds-conflict-border: var(--ds-amber-500);
+
+  --ds-simulation-ink:    var(--ds-sim-300);
+  --ds-simulation-fill:   rgba(228, 119, 191, 0.12);
+  --ds-simulation-border: var(--ds-sim-300);
+  --ds-simulation-stripe: repeating-linear-gradient(45deg, var(--ds-sim-300) 0 6px, transparent 6px 12px);
+
+  --ds-silence-ink-on-low:  var(--ds-n-12);
+  --ds-silence-ink-on-high: var(--ds-n-0);
+  --ds-silence-ring: #8F959E;
+
+  --ds-shadow-color: 0, 0, 0;
+  color-scheme: dark;
+}
+
+/* OS preference, only when the app opts in with data-theme="auto". Same values as above. */
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --ds-color-bg:              var(--ds-n-12);
+    --ds-color-bg-raised:       var(--ds-n-11);
+    --ds-color-bg-sunken:       var(--ds-n-10);
+    --ds-color-bg-well:         var(--ds-n-9);
+    --ds-color-border:          #2E343D;
+    --ds-color-border-strong:   #5C6470;
+    --ds-color-text:            #E6E8EB;
+    --ds-color-text-secondary:  #B4B9C1;
+    --ds-color-text-muted:      #8F959E;
+    --ds-color-text-display:    #F4F5F7;
+    --ds-color-text-on-accent:  var(--ds-n-12);
+    --ds-color-accent:             var(--ds-beacon-300);
+    --ds-color-accent-hover:       #7FC5CF;
+    --ds-color-accent-active:      #9FD6DE;
+    --ds-color-accent-soft:        rgba(98, 180, 192, 0.12);
+    --ds-color-accent-soft-border: rgba(98, 180, 192, 0.35);
+    --ds-color-link:               var(--ds-beacon-300);
+    --ds-color-attention:             var(--ds-amber-300);
+    --ds-color-attention-soft:        rgba(230, 178, 76, 0.12);
+    --ds-color-attention-soft-border: rgba(230, 178, 76, 0.35);
+    --ds-color-hazard:                var(--ds-ember-300);
+    --ds-color-hazard-hover:          #F6A98D;
+    --ds-color-hazard-soft:           rgba(239, 138, 102, 0.12);
+    --ds-color-hazard-soft-border:    rgba(239, 138, 102, 0.35);
+    --ds-color-focus:                 var(--ds-sky-300);
+    --ds-tier-unverified-ink:      #A5AAB3;
+    --ds-tier-unverified-fill:     var(--ds-n-10);
+    --ds-tier-unverified-border:   #5C6470;
+    --ds-tier-corroborated-ink:    var(--ds-beacon-300);
+    --ds-tier-corroborated-fill:   rgba(98, 180, 192, 0.12);
+    --ds-tier-corroborated-border: rgba(98, 180, 192, 0.45);
+    --ds-tier-verified-ink:        var(--ds-verdant-300);
+    --ds-tier-verified-fill:       rgba(99, 183, 127, 0.12);
+    --ds-tier-verified-border:     rgba(99, 183, 127, 0.45);
+    --ds-stale-ink:    #A5AAB3;
+    --ds-stale-border: #5C6470;
+    --ds-stale-hatch:  repeating-linear-gradient(135deg, transparent 0 4px, #2E343D 4px 5px);
+    --ds-conflict-ink:    var(--ds-amber-300);
+    --ds-conflict-fill:   rgba(230, 178, 76, 0.12);
+    --ds-conflict-border: var(--ds-amber-500);
+    --ds-simulation-ink:    var(--ds-sim-300);
+    --ds-simulation-fill:   rgba(228, 119, 191, 0.12);
+    --ds-simulation-border: var(--ds-sim-300);
+    --ds-simulation-stripe: repeating-linear-gradient(45deg, var(--ds-sim-300) 0 6px, transparent 6px 12px);
+    --ds-silence-ink-on-low:  var(--ds-n-12);
+    --ds-silence-ink-on-high: var(--ds-n-0);
+    --ds-silence-ring: #8F959E;
+    --ds-shadow-color: 0, 0, 0;
+    color-scheme: dark;
+  }
+}
+
+/* ---------- Base ---------- */
+.ds-root {
+  background: var(--ds-color-bg);
+  color: var(--ds-color-text);
+  font-family: var(--ds-font-ui);
+  font-size: var(--ds-text-md);
+  line-height: var(--ds-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.ds-root *, .ds-root *::before, .ds-root *::after { box-sizing: border-box; }
+.ds-root :focus-visible { outline: none; box-shadow: var(--ds-focus-ring); border-radius: var(--ds-radius-sm); }
+.ds-mono, .ds-root code, .ds-root kbd, .ds-root time[datetime] { font-family: var(--ds-font-mono); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  :root { --ds-dur-fast: 0ms; --ds-dur-base: 0ms; --ds-dur-slow: 0ms; }
+}
