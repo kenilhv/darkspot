@@ -1,0 +1,27 @@
+# DarkSpot LibreChat config. Mounted into the librechat container at /app/librechat.yaml.
+# Docs: https://www.librechat.ai/docs/configuration/librechat_yaml
+version: 1.2.1
+cache: true
+
+# Every model turn goes through the DarkSpot guard proxy (apps/chat/proxy), which
+# injects the Rule 1 system prompt and runs the deterministic guard on the output.
+# The proxy's own upstream (inference.net / Anthropic) is set via UPSTREAM_* env.
+endpoints:
+  custom:
+    - name: "DarkSpot (guarded)"
+      apiKey: "darkspot-proxy"            # proxy ignores it; upstream key lives on the proxy, not in LibreChat
+      baseURL: "http://darkspot-proxy:3312/v1"
+      models:
+        default: ["${DARKSPOT_MODEL}"]
+        fetch: false
+      titleConvo: false                    # title generation would be an unguarded model call
+      modelDisplayLabel: "DarkSpot"
+      dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
+
+# Coordinator tools (apps/chat/tools) — evidence only, fail closed until CORE's views exist.
+mcpServers:
+  darkspot:
+    type: streamable-http
+    url: "http://darkspot-tools:3311/mcp"
+    timeout: 60000
+    serverInstructions: true

@@ -1,0 +1,37 @@
+# DarkSpot LibreChat stack. From apps/chat/librechat:  docker compose up -d
+# Copy .env.example → .env first. Nothing here fabricates data: without UPSTREAM_* the
+# proxy returns 503 on chat; without CLICKHOUSE_URL/DATABASE_URL the tools say "not available".
+services:
+  librechat:
+    image: ghcr.io/danny-avila/librechat:latest
+    ports: ["3080:3080"]
+    depends_on: [mongodb, darkspot-tools, darkspot-proxy]
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3080
+      MONGO_URI: mongodb://mongodb:27017/LibreChat
+      CONFIG_PATH: /app/librechat.yaml
+      ENDPOINTS: custom
+      ALLOW_REGISTRATION: "true"
+    volumes:
+      - ./librechat.yaml:/app/librechat.yaml:ro
+      - librechat-data:/app/data
+  mongodb:
+    image: mongo:7
+    command: mongod --noauth
+    volumes: ["mongo-data:/data/db"]
+  darkspot-tools:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "tools/server.ts"]
+    env_file: .env
+    environment: { PORT: 3311 }
+    extra_hosts: ["host.docker.internal:host-gateway"]   # so CLICKHOUSE_URL/DATABASE_URL can point at host services
+  darkspot-proxy:
+    build: { context: .., dockerfile: Dockerfile }
+    command: ["node", "proxy/server.ts"]
+    env_file: .env
+    environment: { PORT: 3312 }
+volumes:
+  librechat-data:
+  mongo-data:
