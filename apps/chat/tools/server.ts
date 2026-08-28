@@ -25,6 +25,8 @@ import { z } from "zod";
 import pg from "pg";
 import { CONTRACT, type ChView } from "./contract.ts";
 import { chColumns, chConfigFromEnv, chQuery, type ChConfig } from "./clickhouse.ts";
+import { extractOptionsFromEnv, extractReport, publicFields } from "../intake/extract.ts";
+import { newReport, storeReport } from "../intake/store.ts";
 import { formatConflicts, formatPriorityRanking, formatRoutePlan, guardToolText, notAvailable, type ConflictRow, type RankRow, type RouteRow } from "./format.ts";
 
 const PORT = Number(process.env.PORT ?? 3311);
@@ -158,6 +160,42 @@ function buildServer(): McpServer {
       } finally {
         await ready.client.end();
       }
+    },
+  );
+
+  server.registerTool(
+    "file_field_report",
+    {
+      title: "File a field report (volunteer)",
+      description:
+        "Files a typed field report. Raw text is always kept verbatim (local outbox; mesh_events when it exists). " +
+        "Structured extraction runs via inference.net when configured, otherwise the report is stored unextracted and marked unverified. " +
+        "Nothing is inferred. Restricted extracted fields are not echoed back.",
+      inputSchema: {
+        raw_text: z.string().min(1).max(4000).describe("The report exactly as typed by the volunteer"),
+        disaster_event_id: z.string().min(1).describe("Active disaster_events.id"),
+        device_pubkey: z.string().min(1).describe("Reporting device identity (bitchat Noise pubkey) or volunteer id"),
+        settlement_geohash: z.string().optional().describe("Settlement geohash if known"),
+      },
+    },
+    async ({ raw_text, disaster_event_id, device_pubkey, settlement_geohash }) => {
+      const extraction = await extractReport(raw_text, extractOptionsFromEnv());
+      const report = newReport({ disaster_event_id, device_pubkey, raw_text, settlement_geohash }, extraction);
+      const outcome = await storeReport(report, process.env.OUTBOX_PATH ?? "data/outbox.jsonl", chConfigFromEnv());
+      const pub = publicFields(extraction.fields);
+      const lines = [
+        `Report filed, id=${report.id} (received ${report.received_at}).`,
+        `Raw text (verbatim, never discarded):`,
+        raw_text.split(/?
+/).map((l) => "> " + l).join("
+"),
+        `Storage: local outbox ${outcome.outbox}; mesh_events: ${outcome.mesh_events} — ${outcome.detail}`,
+        `Extraction: ${extraction.status}${extraction.provider ? " via " + extraction.provider : ""} — ${extraction.note}`,
+      ];
+      if (pub) lines.push(`Extracted (non-restricted fields only, check against the raw text above): ${JSON.stringify(pub)}`);
+      lines.push("Confidence tier for this single report: unverified-single-source.");
+      return text(lines.join("
+"));
     },
   );
 

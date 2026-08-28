@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test guard/*.test.ts tools/*.test.ts proxy/*.test.ts",
+    "test": "node --test guard/*.test.ts tools/*.test.ts proxy/*.test.ts intake/*.test.ts",
     "eval:rule1": "node guard/rule1.eval.ts",
     "tools": "node tools/server.ts",
     "proxy": "node proxy/server.ts"
