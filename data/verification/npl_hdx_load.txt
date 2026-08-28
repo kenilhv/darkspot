@@ -1,0 +1,22 @@
+# HDX load verification — NPL — run 2026-08-28T20:52:47+00:00
+cod-ab-npl: 'Nepal - Subnational Administrative Boundaries' | dataset_date=[2024-03-14T00:00:00 TO 2025-10-30T23:59:59] | last_modified=2026-08-14T07:21:20.227565 | org=OCHA Field Information Services Section (FISS)
+   resource npl_admin_boundaries.gdb.zip | Geodatabase | last_modified=2026-08-14T07:20:24.467563
+   resource npl_admin_boundaries.shp.zip | SHP | last_modified=2026-08-14T07:20:54.801358
+   resource npl_admin_boundaries.geojson.zip | GeoJSON | last_modified=2026-08-14T07:21:17.536440
+   resource npl_admin_boundaries.xlsx | XLSX | last_modified=2026-08-14T07:21:20.227565
+cod-ps-npl: 'Nepal - Subnational Population Statistics' | dataset_date=[2023-11-01T00:00:00 TO 2023-11-30T23:59:59] | last_modified=2024-10-14T13:48:34.297708 | org=UNFPA
+   resource npl_codps_qa_2023.pdf | PDF | last_modified=2024-10-14T13:48:23.932310
+   resource npl_admgz.xlsx | XLSX | last_modified=2024-10-14T13:48:25.581600
+   resource npl_admpop_2023.xlsx | XLSX | last_modified=2024-10-14T13:48:27.436534
+   resource npl_admpop_adm0_2023.csv | CSV | last_modified=2024-10-14T13:48:29.748081
+   resource npl_admpop_adm1_2023.csv | CSV | last_modified=2024-10-14T13:48:32.113798
+   resource npl_admpop_adm2_2023.csv | CSV | last_modified=2024-10-14T13:48:34.297708
+   resource npl_admpop_2022.xlsx | XLSX | last_modified=2022-06-29T09:31:53.585542
+
+level | source_rows(COD-AB xlsx) | db_units | db_with_pop | db_pop_sum | source_pop_sum(COD-PS csv) | db_with_point | retrieved
+    0 |                        1 |        1 |           1 |   30899443 |                   30899443 |             1 | 2026-08-28 20:38:16.711428+00:00  OK
+    1 |                        7 |        7 |           7 |   30899443 |                   30899443 |             7 | 2026-08-28 20:38:16.711428+00:00  OK
+    2 |                       77 |       77 |          77 |   30899443 |                   30899443 |            77 | 2026-08-28 20:38:16.711428+00:00  OK
+    3 |                      775 |      775 |           0 |       None |                       None |           775 | 2026-08-28 20:38:16.711428+00:00  OK
+
+TOTAL admin_units(NPL) = 860   RESULT: PASS
