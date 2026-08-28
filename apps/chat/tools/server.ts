@@ -122,13 +122,16 @@ export function buildServer(viewer: Viewer = { subject: null, trusted: true }): 
       const rows = await chQuery<RankRow>(
         ready.cfg,
         `SELECT toString(p.disaster_event_id) AS disaster_event_id, p.settlement_pcode AS settlement_pcode, p.settlement_name AS settlement_name, p.rank AS rank, p.silence_hours AS silence_hours, p.never_heard AS never_heard, p.report_count AS report_count,
-                toString(p.last_report_at) AS last_report_at, p.population_used AS population_used, p.population_basis AS population_basis, p.hazard_exposure AS hazard_exposure, p.hazard_unknown AS hazard_unknown,
+                toString(p.last_report_at) AS last_report_at, p.population_used AS population_used, p.population_basis AS population_basis,
+                p.hazard_exposure AS hazard_exposure, p.hazard_kind AS hazard_kind, p.hazard_source_org AS hazard_source_org, p.hazard_source_licence AS hazard_source_licence, p.hazard_unknown AS hazard_unknown,
+                p.coverage_basis AS coverage_basis,
                 c.corroboration AS corroboration, s.is_stale AS is_stale, s.effective_status AS effective_status, s.window_hours AS window_hours
          FROM priority_rank p
          INNER JOIN pg_disaster_events e ON e.id = p.disaster_event_id
          LEFT JOIN (
            SELECT disaster_event_id, settlement_pcode,
-                  groupArray(map('extracted_status', extracted_status, 'confidence_tier', confidence_tier, 'distinct_devices', toString(distinct_devices))) AS corroboration
+                  groupArray(map('extracted_status', extracted_status, 'confidence_tier', confidence_tier, 'distinct_devices', toString(distinct_devices),
+                                 'distinct_trusted_devices', toString(distinct_trusted_devices), 'trusted_corroboration', toString(trusted_corroboration))) AS corroboration
            FROM corroboration GROUP BY disaster_event_id, settlement_pcode
          ) c ON c.disaster_event_id = p.disaster_event_id AND c.settlement_pcode = p.settlement_pcode
          LEFT JOIN staleness s ON s.disaster_event_id = p.disaster_event_id AND s.settlement_pcode = p.settlement_pcode
@@ -142,7 +145,13 @@ export function buildServer(viewer: Viewer = { subject: null, trusted: true }): 
       const auth = await authFor(viewer, rows.length ? String(rows[0].disaster_event_id) : null);
       for (const r of rows) {
         // groupArray(map) arrives as array of string maps; normalise
-        r.corroboration = ((r.corroboration as any[]) ?? []).map((m: any) => ({ extracted_status: m.extracted_status, confidence_tier: m.confidence_tier, distinct_devices: Number(m.distinct_devices) }));
+        r.corroboration = ((r.corroboration as any[]) ?? []).map((m: any) => ({
+          extracted_status: m.extracted_status,
+          confidence_tier: m.confidence_tier,
+          distinct_devices: Number(m.distinct_devices),
+          distinct_trusted_devices: m.distinct_trusted_devices == null ? null : Number(m.distinct_trusted_devices),
+          trusted_corroboration: m.trusted_corroboration === "true" || m.trusted_corroboration === "1",
+        }));
         if (Number(r.report_count) > 0) {
           r.raw_reports = await chQuery(
             ready.cfg,

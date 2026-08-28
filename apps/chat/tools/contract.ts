@@ -23,8 +23,9 @@ export const RESTRICTED_STATUS_LABEL = "restricted (casualty-related; visible on
 export const CONTRACT = {
   clickhouse: {
     mesh_events: ["id", "disaster_event_id", "device_pubkey", "bridge_pubkey", "hop_count", "reported_at", "received_at", "settlement_pcode", "settlement_geohash", "raw_text", "extracted_status", "extracted_people", "extraction_model", "extraction_confidence"],
-    priority_rank: ["disaster_event_id", "settlement_pcode", "settlement_name", "never_heard", "report_count", "last_report_at", "silence_hours", "population_used", "population_basis", "hazard_exposure", "hazard_unknown", "rank"],
-    corroboration: ["disaster_event_id", "settlement_pcode", "extracted_status", "distinct_devices", "message_count", "confidence_tier"],
+    // coverage_basis / hazard_kind / hazard_source_* landed with CORE's review-pass #1 (D-18/D-19, agent/core 9bdba96)
+    priority_rank: ["disaster_event_id", "settlement_pcode", "settlement_name", "never_heard", "coverage_basis", "report_count", "last_report_at", "silence_hours", "population_used", "population_basis", "hazard_exposure", "hazard_kind", "hazard_source_org", "hazard_source_licence", "hazard_unknown", "rank"],
+    corroboration: ["disaster_event_id", "settlement_pcode", "extracted_status", "distinct_devices", "distinct_trusted_devices", "trusted_corroboration", "message_count", "confidence_tier"],
     staleness: ["disaster_event_id", "settlement_pcode", "latest_status", "latest_mesh_event_id", "latest_at", "window_hours", "is_stale", "effective_status"],
     conflicts: ["disaster_event_id", "settlement_pcode", "distinct_statuses", "distinct_devices", "reports_side_by_side"],
     pg_disaster_events: ["id", "region", "activation_date"],

@@ -65,29 +65,57 @@ export interface RankRow extends Row {
   population_used?: number | null;
   population_basis?: string;
   hazard_exposure?: string | null;
+  hazard_kind?: string | null;
+  hazard_source_org?: string | null;
+  hazard_source_licence?: string | null;
   hazard_unknown?: number | boolean;
-  corroboration?: { extracted_status: string; confidence_tier: string; distinct_devices: number }[];
+  coverage_basis?: string | null;
+  corroboration?: { extracted_status: string; confidence_tier: string; distinct_devices: number; distinct_trusted_devices?: number | null; trusted_corroboration?: boolean | number | null }[];
   is_stale?: number | boolean | null;
   effective_status?: string | null;
   window_hours?: number | null;
   raw_reports?: { id: string; received_at: string; extracted_status: string; raw_text: string; extracted_people?: number | null }[];
 }
 
+/**
+ * D-18 wording: silence is only a signal where a device was known to exist.
+ * CORE's coverage_basis (agent/core 9bdba96, device_sightings evidence rows):
+ *   device_sighted_before_activation → "silent" is licensed
+ *   device_sighted_after_activation  → reachable since activation, but no report
+ *   none                             → no coverage evidence: absence of data, not a signal
+ */
+export function coverageWording(r: { never_heard?: number | boolean; coverage_basis?: string | null; silence_hours?: number; report_count?: number; last_report_at?: string | null }): string {
+  const basis = r.coverage_basis ?? "none";
+  if (!r.never_heard) return `no report for ${h(r.silence_hours)}h (${r.report_count ?? "?"} report(s), last ${r.last_report_at ?? "?"}; coverage_basis=${basis})`;
+  if (basis === "device_sighted_before_activation") return `silent: a DarkSpot device was sighted here before activation and nothing has been heard for ${h(r.silence_hours)}h (coverage_basis=device_sighted_before_activation)`;
+  if (basis === "device_sighted_after_activation") return `reachable since activation but no report for ${h(r.silence_hours)}h (coverage_basis=device_sighted_after_activation)`;
+  return `no DarkSpot device ever registered here — no report in ${h(r.silence_hours)}h since activation is absence of data, not a signal (coverage_basis=none)`;
+}
+
 export function formatPriorityRanking(region: string, rows: RankRow[], source: string, authorized = false): string {
   if (rows.length === 0) return `Priority ranking for "${region}": ${source} has no rows matching this region (event id, event region text, or settlement name).`;
   const lines = [
     `Priority ranking for "${region}" — ${rows.length} settlement(s), source ${source}.`,
-    `priority_score = silence_hours x population x hazard_weight (CORE view). Silence is time since any report — for never-heard settlements the clock runs from event activation — not an anomaly score.`,
+    `priority_score = silence_hours x population x hazard_weight (CORE view). silence_hours is time since any report (from activation where none exists) — not an anomaly score — and is only a signal where coverage_basis shows a DarkSpot device was known to exist; coverage_basis=none means absence of data.`,
     ``,
   ];
   for (const r0 of rows) {
     const r = stripRestricted(r0, authorized);
     const pop = r.population_used == null ? "population unknown" : `population ~${r.population_used}` + (r.population_basis === "parent" ? " (parent unit figure — no unit-level census)" : "");
-    const haz = !r.hazard_exposure || r.hazard_exposure === "unknown" ? "hazard exposure unknown" : `hazard exposure ${r.hazard_exposure}`;
-    const heard = r.never_heard ? `never heard from since activation (${h(r.silence_hours)}h)` : `no report for ${h(r.silence_hours)}h (${r.report_count ?? "?"} report(s), last ${r.last_report_at ?? "?"})`;
+    // D-19: cite the hazard kind and its source org, not a bare level
+    const haz =
+      !r.hazard_exposure || r.hazard_exposure === "unknown"
+        ? "hazard exposure unknown (no mapped product covers this unit)"
+        : `hazard exposure ${r.hazard_exposure}` + (r.hazard_kind ? ` — ${r.hazard_kind}` + (r.hazard_source_org ? ` (${r.hazard_source_org}${r.hazard_source_licence ? `, ${r.hazard_source_licence}` : ""})` : "") : "");
+    const heard = coverageWording(r);
     const stale = r.is_stale ? ` — STALE: last extracted status is past the ${r.window_hours ?? "?"}h window; effective status "${r.effective_status ?? "unknown, needs re-verification"}"` : "";
     lines.push(`${r.rank}. ${r.settlement_name} (pcode ${r.settlement_pcode}${r.granularity_level != null ? `, adm${r.granularity_level}` : ""}): ${heard}; ${pop}; ${haz}${stale}.`);
-    const corr = (r.corroboration ?? []).map((c) => `${publicStatus(c.extracted_status, authorized)}: ${c.confidence_tier} (${c.distinct_devices} distinct device(s))`);
+    const corr = (r.corroboration ?? []).map(
+      (c) =>
+        `${publicStatus(c.extracted_status, authorized)}: ${c.confidence_tier} (${c.distinct_devices} distinct device(s)` +
+        (c.distinct_trusted_devices != null ? `, ${c.distinct_trusted_devices} human-trusted; trusted corroboration: ${c.trusted_corroboration ? "yes" : "no"}` : "") +
+        `)`,
+    );
     lines.push(`   confidence: ${corr.length ? corr.join("; ") : "no extracted reports — unverified"}`);
     lines.push(`   cited: ${source} row settlement_pcode=${r.settlement_pcode}`);
     for (const rep of r.raw_reports ?? []) {

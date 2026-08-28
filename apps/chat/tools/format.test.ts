@@ -32,7 +32,9 @@ test("priority ranking renders CORE's fields honestly (never_heard, parent popul
     ],
     "darkspot.priority_rank",
   );
-  assert.match(t, /1\. Simaltal \(pcode NP0201, adm3\): never heard from since activation \(52\.3h\)/);
+  // D-18: without coverage evidence the wording is "no device ever registered", never "silent" / "never heard"
+  assert.match(t, /1\. Simaltal \(pcode NP0201, adm3\): no DarkSpot device ever registered here — no report in 52\.3h since activation is absence of data, not a signal \(coverage_basis=none\)/);
+  assert.doesNotMatch(t, /never heard|silent/i);
   assert.match(t, /parent unit figure/);
   assert.match(t, /hazard exposure unknown/);
   assert.match(t, /no extracted reports — unverified/);
@@ -93,4 +95,22 @@ test("an authorized viewer (individual_pii) sees the casualty status, headcount 
   const cf = formatConflicts("X", [{ settlement_pcode: "NP1", distinct_statuses: 2, distinct_devices: 2, reports_side_by_side: [["casualties", "aa", "t", "two hurt", "i1"], ["safe", "bb", "t", "fine", "i2"]] }], "src", true);
   assert.match(cf, /^> two hurt$/m);
   assert.match(cf, /extracted_status=casualties:/);
+});
+
+test("D-18/D-19: coverage_basis drives the silence wording; hazard cites kind + source; trusted corroboration shown beside the tier", () => {
+  const base = { settlement_name: "X", silence_hours: 68.8, never_heard: 1, report_count: 0, last_report_at: null, population_used: 100, population_basis: "unit", hazard_exposure: "high", hazard_kind: "Flood extent", hazard_source_org: "HOT", hazard_source_licence: "ODbL", hazard_unknown: 0 };
+  const none = formatPriorityRanking("r", [{ ...base, settlement_pcode: "A", rank: 1, coverage_basis: "none" }], "src");
+  assert.match(none, /no DarkSpot device ever registered here — no report in 68\.8h since activation is absence of data, not a signal \(coverage_basis=none\)/);
+  assert.doesNotMatch(none, /silent/i);
+  const after = formatPriorityRanking("r", [{ ...base, settlement_pcode: "B", rank: 2, coverage_basis: "device_sighted_after_activation" }], "src");
+  assert.match(after, /reachable since activation but no report for 68\.8h/);
+  assert.doesNotMatch(after, /silent/i);
+  const before = formatPriorityRanking("r", [{ ...base, settlement_pcode: "C", rank: 3, coverage_basis: "device_sighted_before_activation" }], "src");
+  assert.match(before, /silent: a DarkSpot device was sighted here before activation and nothing has been heard for 68\.8h/);
+  assert.match(none, /hazard exposure high — Flood extent \(HOT, ODbL\)/);
+  const unk = formatPriorityRanking("r", [{ ...base, settlement_pcode: "D", rank: 4, coverage_basis: "none", hazard_exposure: "unknown", hazard_kind: null }], "src");
+  assert.match(unk, /hazard exposure unknown \(no mapped product covers this unit\)/);
+  const corr = formatPriorityRanking("r", [{ ...base, settlement_pcode: "E", rank: 5, never_heard: 0, report_count: 3, last_report_at: "t", coverage_basis: "device_sighted_after_activation", corroboration: [{ extracted_status: "needs_help", confidence_tier: "corroborated-multi-source", distinct_devices: 3, distinct_trusted_devices: 0, trusted_corroboration: false }] }], "src");
+  assert.match(corr, /needs_help: corroborated-multi-source \(3 distinct device\(s\), 0 human-trusted; trusted corroboration: no\)/);
+  for (const t of [none, after, before, unk, corr]) assert.equal(checkRule1(t).ok, true);
 });

@@ -90,7 +90,9 @@ try {
   const ts = await call(spoof, "spoofed-token", "get_priority_ranking", { region: PC, limit: 1 });
 
   const must = [
-    [b, /never heard from since activation|no report for/],
+    [b, /no DarkSpot device ever registered here|reachable since activation but no report|silent: a DarkSpot device was sighted|no report for/],
+    [b, /coverage_basis=(none|device_sighted_before_activation|device_sighted_after_activation)/],
+    [b, /hazard exposure (high|medium|low) — .+ \(.+\)|hazard exposure unknown/],
     [b, new RegExp(`cited: .*priority_rank row settlement_pcode=${PC}`)],
     [t, /^> \[CHAT-VERIFY-FIXTURE\] bridge gone, need boats$/m],
     [t, /raw text withheld/],
