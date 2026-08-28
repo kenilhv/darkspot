@@ -3,6 +3,7 @@ import { useState } from 'react';
 import '../src/tokens.css';
 import '../src/components.css';
 import { SimDemo } from './sim';
+import { CoordinatorDemo } from './coordinator';
 import { SettlementCard, RawReport } from '../src';
 import { ConfidenceTierBadge, SimulationLabel, StaleMarker, SilenceSwatch, SilenceLegend, silenceStep, confidenceTiers } from '../src';
 
@@ -58,4 +59,4 @@ function Demo() {
   );
 }
 const page = new URLSearchParams(location.search).get('page');
-createRoot(document.getElementById('root')!).render(page === 'sim' ? <SimDemo /> : <Demo />);
+createRoot(document.getElementById('root')!).render(page === 'sim' ? <SimDemo /> : page === 'coordinator' ? <CoordinatorDemo /> : <Demo />);

@@ -95,8 +95,8 @@ export type HazardExposure = 'high' | 'medium' | 'low' | 'unknown';
 export type CoverageBasis = 'device_sighted_before_activation' | 'device_sighted_after_activation' | 'none';
 export const coverageLabel: Record<CoverageBasis, string> = {
   device_sighted_before_activation: 'a mesh device was sighted here before activation',
-  device_sighted_after_activation: 'reachable since activation (device sighted) but no report',
-  none: 'no coverage evidence — absence of data, not a signal',
+  device_sighted_after_activation: 'a device is known here only since the event — no report yet',
+  none: 'no DarkSpot device ever registered here — absence of data, not a signal',
 };
 export interface CorroborationRow {
   extracted_status: ExtractedStatus | string;
@@ -119,12 +119,16 @@ export interface SettlementCardProps extends HTMLAttributes<HTMLElement> {
   populationUsed?: number | null;
   populationBasis?: 'unit' | 'parent' | 'none' | string;
   hazardExposure: HazardExposure | string;
+  /** CORE `hazard_kind`, e.g. "Flood extent" (HOT) or "Landslide" (Copernicus) — shown so a coordinator sees what was observed, not one undifferentiated level. */
+  hazardKind?: string | null;
   /** Omitted, unrecognised or non-`device_sighted_before_activation` ⇒ wording is "no report", never "silent". */
   coverageBasis?: CoverageBasis | string | null;
   corroboration?: CorroborationRow[];
   isStale?: boolean;
   windowHours?: number | null;
   effectiveStatus?: string | null;
+  /** Print the "silence × population × hazard … not a risk score" line on the card (default). Lists print it once instead. */
+  showFormula?: boolean;
   /** Extra content (e.g. RawReport list) rendered below the summary. */
   children?: ReactNode;
 }
@@ -134,7 +138,7 @@ const hazardLabel: Record<HazardExposure, string> = {
   low: 'Hazard exposure: low',
   unknown: 'Hazard exposure: unknown',
 };
-export function SettlementCard({ rank, name, pcode, granularityLevel, neverHeard, silenceHours, reportCount, lastReportAt, populationUsed, populationBasis, hazardExposure, coverageBasis, corroboration = [], isStale, windowHours, effectiveStatus, children, className, ...rest }: SettlementCardProps) {
+export function SettlementCard({ rank, name, pcode, granularityLevel, neverHeard, silenceHours, reportCount, lastReportAt, populationUsed, populationBasis, hazardExposure, hazardKind, coverageBasis, corroboration = [], isStale, windowHours, effectiveStatus, showFormula = true, children, className, ...rest }: SettlementCardProps) {
   const hz = (hazardExposure in hazardLabel ? hazardExposure : 'unknown') as HazardExposure;
   const cov = (coverageBasis && coverageBasis in coverageLabel ? coverageBasis : 'none') as CoverageBasis;
   const covered = cov === 'device_sighted_before_activation';
@@ -172,12 +176,15 @@ export function SettlementCard({ rank, name, pcode, granularityLevel, neverHeard
         </div>
         <div>
           <dt>Hazard</dt>
-          <dd><span className={cx('ds-hazard', `ds-hazard--${hz}`)}>{hazardLabel[hz]}</span></dd>
+          <dd>
+            <span className={cx('ds-hazard', `ds-hazard--${hz}`)}>{hazardLabel[hz]}</span>
+            {hazardKind && hz !== 'unknown' && <span className="ds-settlement__hazardkind"> · {hazardKind}</span>}
+          </dd>
         </div>
       </dl>
-      <p className="ds-settlement__formula">
+      {showFormula && <p className="ds-settlement__formula">
         Priority rank uses silence × population ({populationBasis ?? 'basis unknown'}) × hazard weight (CORE view). The three are shown separately above; the product is not a risk score.
-      </p>
+      </p>}
       {isStale && (
         <div className="ds-settlement__stale">
           <StaleMarker />
