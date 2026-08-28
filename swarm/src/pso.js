@@ -14,14 +14,18 @@
  *   - mesh clients (here: field mesh nodes / settlements) are fixed points,
  *   - fitness = w_sgc * SGC + w_ncmc * NCMC, where
  *       SGC  = Size of Giant Component of the router graph (connectivity),
- *       NCMC = Number of Covered Mesh Clients (clients within r of >=1 router
- *              belonging to the giant component).
- *     That paper reports 0.7 / 0.3 as the best SGC / NCMC weights; we default
- *     to those and normalise both terms to [0,1] so the weights are comparable
- *     across scenario sizes.
- *   DarkSpot addition (documented, not claimed from the paper): an optional
- *   `anchor` (the bridge/command node) is included in the router graph so the
- *   giant component is measured as "relays connected back to the bridge".
+ *       NCMC = Number of Covered Mesh Clients (clients within r of >=1 router).
+ *     That paper (Sakamoto/Oda/Ikeda/Barolli/Xhafa/Woungang, CISIS 2016,
+ *     pp. 224–229, doi:10.1109/CISIS.2016.55) reports 0.7 / 0.3 as the best
+ *     SGC / NCMC weights; we default to those and normalise both terms to
+ *     [0,1] (the paper reports them as percentages — equivalent).
+ *   DarkSpot deviations (ours, NOT the paper's — verified by RESEARCH 13:38):
+ *   (a) an optional `anchor` (the bridge/command node) is included in the
+ *       router graph so the giant component is measured as "relays connected
+ *       back to the bridge"; (b) NCMC here counts only clients covered by a
+ *       router IN that giant/anchor component — the paper counts coverage by
+ *       any router. Rationale: a relay with no path back to the bridge cannot
+ *       relay anything, so coverage by it is not useful coverage for DarkSpot.
  *
  * PSO itself: Kennedy & Eberhart, "Particle Swarm Optimization", Proc. IEEE
  * ICNN 1995, with the inertia weight w of Shi & Eberhart, "A modified particle
@@ -65,8 +69,10 @@ export function psoRelayPlacement({
   particles = 30, iters = 200, w = 0.729, c1 = 1.49445, c2 = 1.49445,
   wSgc = 0.7, wNcmc = 0.3, seed = 1, onIter = null,
 }) {
-  // w=0.729, c1=c2=1.49445 are Clerc & Kennedy's constriction-equivalent
-  // constants (IEEE TEC 6(1), 2002), the common default in PSO implementations.
+  // w=0.729, c1=c2=1.49445: Eberhart & Shi, "Comparing inertia weights and
+  // constriction factors in particle swarm optimization", CEC 2000,
+  // doi:10.1109/CEC.2000.870279 (the constriction-equivalent setting; Clerc &
+  // Kennedy 2002 give χ=0.7298, c=1.49618 — close but not these numbers).
   const rng = makeRng(seed);
   const dims = 2 * k;
   const { xMin, xMax, yMin, yMax } = bounds;
