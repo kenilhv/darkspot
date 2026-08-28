@@ -256,6 +256,12 @@ const http = createServer(async (req, res) => {
   }
   // Stateless: a fresh server+transport per request (SDK-recommended pattern for stateless streamable HTTP).
   const viewer = viewerFromHeaders(req.headers as any, process.env.TOOLS_SHARED_SECRET);
+  // Audit line (no secrets): who is calling, and whether the shared token checked out.
+  if (req.method === "POST") {
+    const rawSubject = String(req.headers["x-darkspot-subject"] ?? "").slice(0, 40);
+    const tokenPresent = Boolean(req.headers["x-darkspot-tools-token"]);
+    console.log(`[darkspot-tools] request subject=${viewer.subject ?? "-"} trusted=${viewer.trusted} (raw subject header="${rawSubject}", token header present=${tokenPresent})`);
+  }
   const server = buildServer(viewer);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => {
