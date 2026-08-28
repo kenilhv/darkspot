@@ -120,7 +120,33 @@ Question: <the actual decision needed>
 Reply:
 ```
 
-*(empty — first agent to hit a real decision point logs it here)*
+### [OPEN] Arm the rest of the roster? — raised by MON at 13:20
+Question: §3 says the roster is "proposed — confirm with Kenil before arming." Only MON is running (root checkout, no worktrees, no agent branches). Arm CORE/SWARM/CHAT/DESIGN/RESEARCH as listed in AGENT_PROMPTS.md, a subset, or hold? MON will keep looping either way; until answered it does citation audits only.
+Reply:
+
+
+---
+
+## 5a. Directives (MON → agents; newest on top, each one says who/what/why)
+
+**Standing directives (apply from first loop):**
+- **D-1 (all build agents):** Work ONLY in your own worktree (`../darkspot-<role>`, branch `agent/<role>`). Never `rebase`, `checkout`, or `reset` in the root `D:\hackathons\darkspot` checkout — the root is MON's and the shared COORDINATION.md lives there. Edit COORDINATION.md by absolute path from your worktree, commit it on `main` with `-c user.name="Agent <ROLE>"`, and if `main` moved, `git pull --rebase` only your own branch. (Why: the betterday fleet lost time to a root-checkout mid-rebase incident, commit 13eeccd there.)
+- **D-2 (all):** Every commit message or §9 entry that states a technical fact, dataset, or algorithm behavior carries its citation inline (paper + venue + year, or URL). No citation → MON flags it here and the claim is treated as unverified until RESEARCH clears it.
+- **D-3 (CORE):** `escalations.authorized_by` is `NOT NULL` with a FK to a real reviewer identity, and `drone_routes_simulated.is_simulation` is `BOOLEAN NOT NULL DEFAULT true CHECK (is_simulation)` — a schema-level guarantee, not a default that can be flipped. Nothing in any schema may be named or shaped like a dispatch/assignment order (Rules 1, 2, 4).
+- **D-4 (SWARM, CHAT):** No LLM call may sit on the code path of silence-ranking, routing, or allocation (Rule 3). If a narration layer is added, it consumes a finished result; it never gates one.
+- **D-5 (RESEARCH, first unit when armed):** Clear the citation audit below before anything else — these are claims already in this file that are stated as fact without a checkable source.
+
+**Citation audit of COORDINATION.md §2 (MON, 13:20) — stated as fact, not yet checkable:**
+| # | Claim (§2) | Status |
+|---|---|---|
+| C1 | "MDPI *Drones* 2025 reporting ~92% simulated area coverage" for UAV-swarm coverage | No title/authors/DOI. Unverified until a specific paper is named. |
+| C2 | "one comparison needed ~8h wall-clock to simulate 300 seconds" (NS-3/OMNeT++ ruled out) | No source. The decision to skip NS-3 can stand on other grounds, but this number must be sourced or removed. |
+| C3 | "PSO for facility-location/mesh-router placement" as "real citable formulation" | Named as citable but no citation given. |
+| C4 | "AODV itself is the strongest traditional baseline under disaster-like high-mobility conditions" | No comparative study cited. |
+| C5 | Kwak & Sung, *Sensors* 2021, "real drone flight experiments" (DTN ferrying) | Author/venue given; needs title + DOI confirmed. |
+| C6 | "uncoordinated drones are a documented real hazard to manned search-and-rescue aircraft" (basis of Rule 4) | Needs a primary source (e.g. aviation-authority or wildfire-agency statement). Rule 4 stays regardless. |
+| C7 | NAMI "public stance that AI must never make crisis determinations" (basis of Rule 2) | Says "verified" but no URL recorded. Rule 2 stays regardless. |
+| — | AntHocNet (Di Caro/Ducatelle/Gambardella 2004), Gerkey & Matarić *IJRR* 23(9) 2004, Zhao/Ammar MobiHoc 2004, bitchat repo, HDX COD-AB/PS, Copernicus EMS | Specific enough to check; RESEARCH should still confirm each once. |
 
 ---
 
@@ -159,5 +185,5 @@ In priority order:
 ## 9. Heartbeat log (append-only)
 
 ```
-<time> [MON] ...
+13:20 [MON] first loop. Only MON armed (root at aeaba29, no worktrees/branches). Added §5a standing directives D-1..D-5 + citation audit C1–C7 of §2; raised §4 item to Kenil on arming the roster. No other heartbeats to diagnose. Next check ~13:30.
 ```
