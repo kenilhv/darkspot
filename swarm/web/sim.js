@@ -178,7 +178,7 @@ function draw(now) {
 // ---------------------------------------------------------------- panels
 function updatePanels() {
   $('tick').textContent = `tick ${snap.tick}`;
-  $('phase').textContent = snap.phase === 'placing' ? 'phase: placing relays (PSO)' : 'phase: mesh formed · routing + allocation live';
+  $('phase').textContent = snap.phase === 'placing' ? 'phase: placing relays (PSO)' : 'phase: mesh formed · routing + allocation running (simulation)';
   const st = $('stats'); st.innerHTML = '';
   const add = (k, v) => { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; st.append(dt, dd); };
   if (C.tokenSource) add('tokens', C.tokenSource);
