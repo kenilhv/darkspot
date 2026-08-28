@@ -65,16 +65,17 @@
     </li>
 
     <li class="card">
-      <span class="card__tag card__tag--live">live model</span>
-      <h3><a href="http://localhost:3080" target="_blank" rel="noopener">Grounded chat</a> <span class="card__host">LibreChat</span></h3>
+      <span class="card__tag">architecture proven, tool-calling not yet</span>
+      <h3>Grounded chat <span class="card__host">LibreChat</span></h3>
       <p>
-        A coordinator asks in plain language; the answer comes back as cited rows from ClickHouse,
-        never as a command. A deterministic guard sits between the model and the user and blocks
-        any imperative before it is ever shown — enforced in a proxy, not hoped for in a prompt.
+        The design: a deterministic guard sits between any model and the user and blocks an
+        imperative before it is ever shown — enforced in a proxy, not hoped for in a prompt — and
+        every tool response cites the exact row it came from. Both pieces are real and independently
+        verified. What is <strong>not yet verified</strong>: whether LibreChat's own agent layer
+        reliably invokes those tools rather than answering from the model's own guesswork. Until
+        that is fixed, this is shown as code and a direct tool-server call — not as free-form chat.
       </p>
-      <p class="card__meta">
-        Local stack · <span class="mono">localhost:3080</span> · ask about <em>Trishuli</em>
-      </p>
+      <p class="card__meta mono">apps/chat/guard · apps/chat/tools/server.ts</p>
     </li>
 
     <li class="card">

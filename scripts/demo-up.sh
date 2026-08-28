@@ -44,12 +44,19 @@ for u in \
   "http://localhost:5200/               landing" \
   "http://localhost:5200/coordinator/   coordinator view" \
   "http://localhost:5200/sim/           swarm simulation" \
-  "http://localhost:3080/               LibreChat"
+  "http://localhost:3080/               LibreChat (UI only - do not free-chat live, see DEMO.md)"
 do
   url=${u%% *}; label=${u#* }
   code=$(curl -s -o /dev/null -w '%{http_code}' "$url")
   [ "$code" = "200" ] && ok "$code  $label  $url" || bad "$code  $label  $url"
 done
+
+say "4b. Tool-server proof (the real chat evidence, not LibreChat's UI)"
+if bash scripts/demo-tool-call.sh Trishuli >/dev/null 2>&1; then
+  ok "MCP tool call returns real cited data - this is what to show, not live chat"
+else
+  bad "demo-tool-call.sh failed - check darkspot-tools container: docker ps"
+fi
 
 say "5. Live cloud data (the claim the demo rests on)"
 if [ -f .env ]; then

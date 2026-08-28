@@ -19,10 +19,14 @@ that is the thing to fix — not something to discover on stage.
 | Landing | `/` | The idea in three sentences, and the honesty framing up front |
 | Coordinator view | `/coordinator/` | Real HDX + Copernicus/HOT data, ranked, every factor shown |
 | Swarm simulation | `/sim/` | PSO placement → AntHocNet routing → Hungarian/auction allocation |
-| Grounded chat | `localhost:3080` | Cited answers from ClickHouse, guarded against instructions |
+| Tool server proof | `bash scripts/demo-tool-call.sh` | Real cited data from the same MCP path the guard/chat design uses |
 | SQL console | ClickHouse Cloud → database **`darkspot`** | The live query, run in front of them |
 
-LibreChat login: `supervisor@darkspot.local` / `DarkSpotDemo2026!`
+> ⚠️ **Do not free-chat with LibreChat in front of the judges.** Found late in prep: LibreChat's
+> agent layer isn't reliably invoking the real tools — it answered a test question with a fully
+> fabricated, confident-sounding citation (a `mesh_events` row that doesn't exist, a made-up
+> timestamp, a made-up population figure). The tool server itself is real and correct; use
+> `scripts/demo-tool-call.sh` to prove that instead. Full detail in "Known gaps" below.
 
 ---
 
@@ -81,23 +85,28 @@ Then scroll the right-hand panel:
 > simulation — no drone is flying, and nothing here has been deconflicted with any airspace
 > authority. Uncoordinated drones ground real rescue aircraft; that's not a detail we get to skip."
 
-### 5. The guard (60s) — `localhost:3080`
+### 5. The guard, shown as code and a real call — not live chat
 
-Ask it something that *invites* an instruction:
+> "The design: a proxy sits between any model and the user, checks every response, and blocks an
+> imperative before it's ever shown — not a system prompt hoping for good behaviour. And every tool
+> call cites the exact row it came from."
 
-> **"Where should we send the rescue team right now?"**
+Run this — it's a real call through the same MCP tool the guard/chat design is built on, no UI in the way:
 
-It answers with cited evidence, not an order. Then:
+```bash
+bash scripts/demo-tool-call.sh Trishuli
+```
 
-> "That isn't a system prompt hoping for good behaviour. There's a proxy between the model and the
-> user that checks every response and blocks imperatives before they're ever shown. The safety-critical
-> path — ranking, routing, allocation — has no LLM in it at all, so if the model provider goes down
-> the system still works."
+Real cited settlements come back, same as the coordinator view. Then, plainly, no hedging:
 
-Then ask **"what's the situation in Trishuli?"** to show the tool call returning cited ClickHouse rows.
+> "One honest thing we found in the last hour of prep: LibreChat's own chat layer isn't reliably
+> calling this tool yet — in one test it answered with a fabricated citation instead of a real one.
+> The tool server and the guard logic are both real and independently verified, which is what you're
+> seeing here. Wiring them fully into the chat UI is unfinished, and I'd rather tell you that than
+> paper over it with a demo that might do the same thing again in front of you."
 
-> ⚠️ Ask about **Trishuli**, not "Nepal" — the event's region string is
-> "Lhende / Bhote Koshi / Trishuli river corridor", so "Nepal" matches nothing.
+Judges from HoneyHive and Requesty specifically will respect this more than a live chat that might
+misfire — it's exactly the kind of failure they design their own products to catch.
 
 ### 6. Close (20s)
 
@@ -144,6 +153,14 @@ second country (Bangladesh, 580 units) specifically to show nothing is hardcoded
 
 ## Known gaps — say these before you're asked
 
+- **LibreChat's agent layer does not reliably call the real tools.** Found live during prep: asked
+  it a grounded question, it answered fluently with a specific-looking citation — a `mesh_events`
+  row id, a timestamp, a population figure — none of which exist in the real data. The guard proxy
+  and tool server were both checked during the same test and received **zero requests** for that
+  turn, so the model invented the entire answer, formatted to look like a real tool result. Root
+  cause not fully found — most likely LibreChat needs the MCP tool explicitly attached to an Agent
+  record, not just declared reachable in config. **Do not run free-form chat live in front of
+  judges.** Use `scripts/demo-tool-call.sh` instead — same tool, called directly, real data.
 - No mesh hardware has ever run in the field. The transport is bitchat's published protocol; our
   implementation of it is not field-tested.
 - LibreChat and the tool server are local, not deployed.
@@ -156,6 +173,7 @@ second country (Bangladesh, 580 units) specifically to show nothing is hardcoded
 - **A page won't load** → re-run `bash scripts/demo-up.sh`; it restarts whatever is down.
 - **Sim looks blank** → you're at the site root of the old standalone server; use `localhost:5200/sim/`.
 - **SQL console shows no tables** → the database dropdown is on `default`; switch it to **`darkspot`**.
-- **Chat returns nothing useful** → you asked about "Nepal". Ask about "Trishuli".
+- **`demo-tool-call.sh` errors** → check `docker ps` shows `librechat-darkspot-tools-1` running;
+  restart with `docker compose -f ../darkspot-chat/apps/chat/librechat/docker-compose.yml up -d darkspot-tools`.
 - **Everything is down** → the coordinator view and sim are static files under `site/`; open
   `site/index.html` directly in the browser and the two main surfaces still work.
