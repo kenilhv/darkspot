@@ -11,8 +11,9 @@ endpoints:
     - name: "DarkSpot (guarded)"
       apiKey: "darkspot-proxy"            # proxy ignores it; upstream key lives on the proxy, not in LibreChat
       baseURL: "http://darkspot-proxy:3312/v1"
+      # LibreChat does not interpolate ${VAR} in this file - verified live, must be a real model id.
       models:
-        default: ["${DARKSPOT_MODEL}"]
+        default: ["meta-llama/Llama-3.3-70B-Instruct"]
         fetch: false
       titleConvo: false                    # title generation would be an unguarded model call
       modelDisplayLabel: "DarkSpot"
@@ -34,5 +35,9 @@ mcpServers:
     headers:
       X-DarkSpot-Subject: "{{LIBRECHAT_USER_ID}}"
       X-DarkSpot-Subject-Email: "{{LIBRECHAT_USER_EMAIL}}"
-      X-DarkSpot-Tools-Token: "${TOOLS_SHARED_SECRET}"
+      # LibreChat does NOT interpolate ${VAR} anywhere in this file - only the {{...}} session
+      # variables above are real. ${TOOLS_SHARED_SECRET} was reaching the tool server as a literal
+      # 24-char string, auth failed silently, and LibreChat logged "0 tools" with no error - this
+      # is why chat could never call get_priority_ranking etc. Value below must match .env exactly.
+      X-DarkSpot-Tools-Token: "fd86ee42a5e529f9f2fb69d7f6c7fceb348372d72a798c94"
     serverInstructions: true
