@@ -20,6 +20,10 @@ FIX = "[VERIFY-FIXTURE] "
 fails = []
 
 
+def total_units(client, ev):
+    return client.query(f"SELECT count() FROM silence_duration WHERE disaster_event_id = '{ev}'").result_rows[0][0]
+
+
 def check(cond, msg):
     print(("OK   " if cond else "FAIL ") + msg)
     if not cond:
@@ -63,6 +67,10 @@ try:
     with pg() as conn, conn.cursor() as cur:   # device 2 vouched by a named human; devices 1 and 3 unknown
         cur.execute("INSERT INTO devices (pubkey, trust, trust_set_by, label) VALUES (%s, 'vouched', %s, %s)",
                     (psycopg2.Binary(dev[1]), FIX + "human", FIX))
+        # coverage evidence: device 2 was surveyed at settlement B BEFORE activation; nothing anywhere else
+        cur.execute("""INSERT INTO device_sightings (device_pubkey, settlement_pcode, geohash, seen_at, source, recorded_by)
+                       VALUES (%s, %s, 'tuv4w', (SELECT activation_date - 3 FROM disaster_events WHERE id = %s), 'pre_activation_survey', %s)""",
+                    (psycopg2.Binary(dev[1]), s_b, ev, FIX + "human"))
     with pg() as conn, conn.cursor() as cur:
         cur.execute("""INSERT INTO reports_human_review (disaster_event_id, mesh_event_id, reviewer, decision, note)
                        VALUES (%s, %s, %s, 'confirmed', %s) RETURNING id""", (ev, str(ids[1]), FIX + "reviewer", FIX))
@@ -76,6 +84,10 @@ try:
     check(4 * 60 <= d[s_a][3] <= 7 * 60, f"silence: {s_a} seconds_since_any_report ~ 5 min (got {d[s_a][3]})")
     check(d[s_a][4] < 120, f"silence: {s_a} seconds_since_human_confirmed is fresh (got {d[s_a][4]})")
     check((window_h + 2) * 3600 - 120 <= d[s_b][3] <= (window_h + 2) * 3600 + 120, f"silence: {s_b} raw clock ~ {window_h + 2}h (got {d[s_b][3]})")
+    cov = client.query(f"SELECT coverage_basis, count() FROM silence_duration WHERE disaster_event_id = '{ev}' GROUP BY 1").result_rows
+    covd = dict(cov)
+    check(covd.get("device_sighted_before_activation") == 1 and covd.get("none", 0) == total_units(client, ev) - 1,
+          f"coverage: exactly one unit has pre-activation device evidence, every other unit is 'none' ({covd})")
     n_never = client.query(f"SELECT countIf(never_heard) FROM silence_duration WHERE disaster_event_id = '{ev}'").result_rows[0][0]
     total = client.query(f"SELECT count() FROM silence_duration WHERE disaster_event_id = '{ev}'").result_rows[0][0]
     check(n_never == total - 2, f"silence: every other in-scope unit still never_heard ({n_never}/{total})")
@@ -121,6 +133,7 @@ finally:
     with pg() as conn, conn.cursor() as cur:
         if review_id:
             cur.execute("DELETE FROM reports_human_review WHERE id = %s", (review_id,))
+        cur.execute("DELETE FROM device_sightings WHERE recorded_by LIKE %s", (FIX + "%",))
         cur.execute("DELETE FROM devices WHERE label = %s", (FIX,))
     left = client.query(f"SELECT count() FROM mesh_events WHERE disaster_event_id = '{ev}'").result_rows[0][0]
     check(left == 0, "cleanup: fixture partitions dropped")

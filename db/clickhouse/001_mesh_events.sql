@@ -93,6 +93,14 @@ CREATE TABLE IF NOT EXISTS darkspot.pg_devices
 )
 ENGINE = PostgreSQL('postgres:5432', 'darkspot', 'devices', 'darkspot', 'darkspot');
 
+CREATE TABLE IF NOT EXISTS darkspot.pg_device_sightings
+(
+    settlement_pcode   Nullable(String),
+    seen_at            DateTime64(6, 'UTC'),
+    source             String
+)
+ENGINE = PostgreSQL('postgres:5432', 'darkspot', 'device_sightings', 'darkspot', 'darkspot');
+
 CREATE TABLE IF NOT EXISTS darkspot.pg_reports_human_review
 (
     id                 UUID,

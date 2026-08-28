@@ -9,6 +9,12 @@
 --   seconds_since_human_confirmed — since a named human marked a report about it 'confirmed'
 -- A settlement with no report at all is the MOST important row, not a missing row: it appears
 -- with never_heard = 1 and the clock counting from the event's activation date.
+--
+-- coverage_basis (RESEARCH review pass #1, finding 1): silence is only a signal where a device was
+-- known to exist. Derived from device_sightings per unit:
+--   'device_sighted_before_activation'  a device was recorded here before the event -> silence means it went quiet
+--   'device_sighted_after_activation'   only known here since the event (a report or a registered bridge)
+--   'none'                              no DarkSpot device was ever recorded here -> silence means NO COVERAGE
 
 -- Incrementally-maintained state: last contact + report count per (event, settlement).
 CREATE TABLE IF NOT EXISTS darkspot.silence_state
@@ -46,6 +52,15 @@ WITH
         FROM darkspot.silence_state
         GROUP BY disaster_event_id, settlement_pcode
     ),
+    coverage AS (
+        SELECT ds.settlement_pcode AS settlement_pcode, e.id AS disaster_event_id,
+               countIf(ds.seen_at <  toDateTime64(e.activation_date, 6, 'UTC')) AS sightings_before,
+               countIf(ds.seen_at >= toDateTime64(e.activation_date, 6, 'UTC')) AS sightings_after
+        FROM darkspot.pg_device_sightings ds
+        CROSS JOIN darkspot.pg_disaster_events e
+        WHERE ds.settlement_pcode IS NOT NULL
+        GROUP BY ds.settlement_pcode, e.id
+    ),
     confirmed AS (
         SELECT m.disaster_event_id AS disaster_event_id, m.settlement_pcode AS settlement_pcode, max(r.reviewed_at) AS last_confirmed_at
         FROM darkspot.pg_reports_human_review r
@@ -67,6 +82,11 @@ SELECT
     toDateTime64(e.activation_date, 3, 'UTC') AS activation_at,
     rp.report_count                        AS report_count,
     rp.report_count = 0                    AS never_heard,
+    multiIf(cv.sightings_before > 0, 'device_sighted_before_activation',
+            cv.sightings_after  > 0, 'device_sighted_after_activation',
+                                     'none')            AS coverage_basis,
+    cv.sightings_before                    AS sightings_before_activation,
+    cv.sightings_after                     AS sightings_after_activation,
     if(rp.report_count = 0, NULL, rp.last_report_at)           AS last_report_at,
     if(c.last_confirmed_at = toDateTime64(0, 6, 'UTC'), NULL, c.last_confirmed_at) AS last_human_confirmed_at,
     -- raw clocks (seconds). Clock starts at activation when nothing has been heard.
@@ -79,5 +99,6 @@ SELECT
 FROM darkspot.pg_hazard_exposure h
 INNER JOIN darkspot.pg_disaster_events e ON e.id = h.disaster_event_id
 INNER JOIN darkspot.pg_admin_units   au ON au.id = h.admin_unit_id
+LEFT  JOIN coverage  cv ON cv.disaster_event_id = e.id AND cv.settlement_pcode = au.pcode
 LEFT  JOIN reports   rp ON rp.disaster_event_id = e.id AND rp.settlement_pcode = au.pcode
 LEFT  JOIN confirmed c  ON c.disaster_event_id  = e.id AND c.settlement_pcode  = au.pcode;

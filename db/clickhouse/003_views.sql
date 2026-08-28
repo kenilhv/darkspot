@@ -149,7 +149,8 @@ WITH parent_pop AS (
 SELECT
     sd.disaster_event_id AS disaster_event_id, sd.admin_unit_id AS admin_unit_id, sd.settlement_pcode AS settlement_pcode,
     sd.settlement_name AS settlement_name, sd.granularity_level AS granularity_level,
-    sd.never_heard AS never_heard, sd.report_count AS report_count, sd.last_report_at AS last_report_at,
+    sd.never_heard AS never_heard, sd.coverage_basis AS coverage_basis,
+    sd.report_count AS report_count, sd.last_report_at AS last_report_at,
     sd.seconds_since_any_report / 3600.0                       AS silence_hours,
     coalesce(sd.population, pp.population)                     AS population_used,
     multiIf(sd.population IS NOT NULL, 'unit', pp.population IS NOT NULL, 'parent', 'none') AS population_basis,
