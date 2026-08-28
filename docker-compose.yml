@@ -21,6 +21,8 @@ services:
       retries: 20
   clickhouse:
     image: clickhouse/clickhouse-server:25.3
+    depends_on:
+      postgres: { condition: service_healthy }   # pg_* link tables + views read Postgres at init
     environment:
       CLICKHOUSE_USER: darkspot
       CLICKHOUSE_PASSWORD: darkspot
