@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import { useState } from 'react';
 import '../src/tokens.css';
 import '../src/components.css';
+import { SimDemo } from './sim';
 import { ConfidenceTierBadge, SimulationLabel, StaleMarker, SilenceSwatch, SilenceLegend, silenceStep, confidenceTiers } from '../src';
 
 const hoursSamples = [0.5, 2, 4, 9, 18, 30, 72, null];
@@ -46,4 +47,5 @@ function Demo() {
     </main>
   );
 }
-createRoot(document.getElementById('root')!).render(<Demo />);
+const page = new URLSearchParams(location.search).get('page');
+createRoot(document.getElementById('root')!).render(page === 'sim' ? <SimDemo /> : <Demo />);

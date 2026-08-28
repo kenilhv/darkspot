@@ -97,3 +97,68 @@
 .ds-silence-legend__swatch--stale { background: var(--ds-stale-hatch); border: 1px dashed var(--ds-stale-border); box-shadow: none; }
 .ds-silence-legend__label { font-family: var(--ds-font-mono); }
 .ds-silence-legend__note { color: var(--ds-color-text-muted); }
+
+/* ---------- Utilities ---------- */
+.ds-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---------- Sim frame ---------- */
+.ds-simframe { display: flex; flex-direction: column; min-height: 100vh; }
+.ds-simframe__banner { border-radius: 0; }
+.ds-simframe__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: var(--ds-space-3) var(--ds-space-4); border-bottom: 1px solid var(--ds-color-border); }
+.ds-simframe__title { margin: 0; font-size: var(--ds-text-xl); letter-spacing: var(--ds-tracking-tight); color: var(--ds-color-text-display); }
+.ds-simframe__body { display: grid; grid-template-columns: minmax(0, 1fr) var(--ds-sidebar); flex: 1; min-height: 0; }
+.ds-simframe__canvas { position: relative; background: var(--ds-sim-canvas-bg); background-image: linear-gradient(var(--ds-sim-canvas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ds-sim-canvas-grid) 1px, transparent 1px); background-size: 40px 40px; min-height: 360px; }
+.ds-simframe__canvas > canvas, .ds-simframe__canvas > svg { display: block; width: 100%; height: 100%; }
+.ds-simframe__aside { display: flex; flex-direction: column; gap: var(--ds-space-5); padding: var(--ds-space-4); border-inline-start: 1px solid var(--ds-color-border); background: var(--ds-color-bg-raised); overflow: auto; }
+@media (max-width: 860px) {
+  .ds-simframe__body { grid-template-columns: 1fr; }
+  .ds-simframe__aside { border-inline-start: 0; border-top: 1px solid var(--ds-color-border); }
+}
+
+/* ---------- Sim legend ---------- */
+.ds-simlegend { display: flex; flex-direction: column; gap: var(--ds-space-2); font-size: var(--ds-text-xs); color: var(--ds-color-text-secondary); }
+.ds-simlegend__title { font-weight: var(--ds-weight-bold); text-transform: uppercase; letter-spacing: var(--ds-tracking-wide); color: var(--ds-color-text-muted); margin-top: var(--ds-space-1); }
+.ds-simlegend__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--ds-space-1); }
+.ds-simlegend__item { display: flex; align-items: center; gap: var(--ds-space-2); min-height: 20px; }
+.ds-simlegend__item--sim { color: var(--ds-simulation-ink); font-weight: var(--ds-weight-bold); }
+.ds-sim-glyph { flex: none; }
+
+/* ---------- Sim controls ---------- */
+.ds-simctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-2); }
+.ds-simctl__btn {
+  min-height: var(--ds-touch-target); min-width: 64px; padding: 0 var(--ds-space-4);
+  font: inherit; font-weight: var(--ds-weight-bold); font-size: var(--ds-text-sm);
+  color: var(--ds-color-text); background: var(--ds-color-bg-well);
+  border: 1px solid var(--ds-color-border-strong); border-radius: var(--ds-radius-md);
+  cursor: pointer; transition: background var(--ds-dur-fast) var(--ds-ease), color var(--ds-dur-fast) var(--ds-ease);
+}
+.ds-simctl__btn:hover:not(:disabled) { background: var(--ds-color-bg-sunken); }
+.ds-simctl__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ds-simctl__btn--primary { color: var(--ds-color-text-on-accent); background: var(--ds-color-accent); border-color: transparent; }
+.ds-simctl__btn--primary:hover:not(:disabled) { background: var(--ds-color-accent-hover); }
+.ds-simctl__btn[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ds-color-accent-soft-border); }
+.ds-simctl__speed { display: inline-flex; align-items: center; gap: var(--ds-space-2); font-size: var(--ds-text-sm); color: var(--ds-color-text-secondary); }
+.ds-simctl__speed select { min-height: var(--ds-touch-target); font: inherit; color: var(--ds-color-text); background: var(--ds-color-bg-well); border: 1px solid var(--ds-color-border-strong); border-radius: var(--ds-radius-md); padding: 0 var(--ds-space-2); }
+.ds-simctl__tick { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); padding-inline: var(--ds-space-2); }
+.ds-simctl__note { flex-basis: 100%; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+
+/* ---------- Sim stat ---------- */
+.ds-simstat { display: flex; flex-direction: column; gap: 2px; padding: var(--ds-space-3); border: 1px solid var(--ds-color-border); border-radius: var(--ds-radius-md); background: var(--ds-color-bg); }
+.ds-simstat__label { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); text-transform: uppercase; letter-spacing: var(--ds-tracking-wide); color: var(--ds-color-text-muted); }
+.ds-simstat__value { font-size: var(--ds-text-xl); font-weight: 500; line-height: var(--ds-leading-tight); color: var(--ds-color-text-display); }
+.ds-simstat__detail { font-size: var(--ds-text-xs); color: var(--ds-color-text-secondary); }
+.ds-simstat--accent .ds-simstat__value { color: var(--ds-color-accent); }
+.ds-simstat--attention { border-color: var(--ds-color-attention-soft-border); background: var(--ds-color-attention-soft); }
+.ds-simstat--attention .ds-simstat__value { color: var(--ds-color-attention); }
+.ds-simstat--hazard { border-color: var(--ds-color-hazard-soft-border); background: var(--ds-color-hazard-soft); }
+.ds-simstat--hazard .ds-simstat__value { color: var(--ds-color-hazard); }
+.ds-simstats { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--ds-space-2); }
+
+/* ---------- Allocation readout ---------- */
+.ds-simalloc { display: grid; grid-template-columns: 1fr; gap: var(--ds-space-2); font-size: var(--ds-text-xs); }
+.ds-simalloc__col { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-3); border: 1px solid var(--ds-color-accent-soft-border); border-radius: var(--ds-radius-md); background: var(--ds-color-accent-soft); color: var(--ds-color-text-secondary); }
+.ds-simalloc__col--auction { border-color: var(--ds-color-attention-soft-border); background: var(--ds-color-attention-soft); }
+.ds-simalloc__head { font-weight: var(--ds-weight-bold); color: var(--ds-color-text); }
+.ds-simalloc__count { font-size: var(--ds-text-lg); color: var(--ds-color-text-display); }
+.ds-simalloc__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.ds-simalloc__foot { margin-top: var(--ds-space-1); color: var(--ds-color-attention); font-weight: var(--ds-weight-bold); }
