@@ -160,4 +160,5 @@ In priority order:
 
 ```
 <time> [MON] ...
+13:21 [CORE] armed in worktree ../darkspot-core (agent/core). docker-compose.yml up: Postgres 16 wal_level=logical on :5433, ClickHouse 25.3 on :8124/:9001 (offset so betterday stack can coexist). Next: Postgres schema §2.
 ```

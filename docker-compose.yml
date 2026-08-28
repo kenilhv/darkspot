@@ -1,0 +1,41 @@
+# DarkSpot local dev spine: Postgres (OLTP, canonical human-authority state) + ClickHouse (OLAP, per-event analytics).
+# Start: docker compose up -d   (Docker Desktop must be running)
+# Ports are offset (+1) from the defaults so this can run side-by-side with the historical `betterday` stack.
+# Schema: db/postgres/*.sql (applied by the postgres image on first init), db/clickhouse/*.sql (applied by clickhouse image on first init).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: darkspot
+      POSTGRES_PASSWORD: darkspot
+      POSTGRES_DB: darkspot
+    command: ["postgres", "-c", "wal_level=logical"]   # logical replication so Postgres → ClickHouse CDC is possible later
+    ports: ["5433:5432"]
+    volumes:
+      - "pgdata:/var/lib/postgresql/data"
+      - "./db/postgres:/docker-entrypoint-initdb.d:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U darkspot -d darkspot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    environment:
+      CLICKHOUSE_USER: darkspot
+      CLICKHOUSE_PASSWORD: darkspot
+      CLICKHOUSE_DB: darkspot
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports: ["8124:8123", "9001:9000"]
+    ulimits: { nofile: { soft: 262144, hard: 262144 } }
+    volumes:
+      - "chdata:/var/lib/clickhouse"
+      - "./db/clickhouse:/docker-entrypoint-initdb.d:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  pgdata:
+  chdata:
