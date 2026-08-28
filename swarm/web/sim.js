@@ -29,7 +29,7 @@ function coverageText(s) {
   if (s.coverageBasis === undefined) return `${h}h (scenario value)`;                       // synthetic scenario
   if (s.coverageBasis === 'device_sighted_before_activation') return `silent ${h}h`;
   if (s.coverageBasis === 'device_sighted_after_activation') return `reachable, no report ${h}h`;
-  return 'no report · no coverage evidence';
+  return 'no report · no coverage';
 }
 const silenceStep = (h) => { let s = 0; for (const e of [1, 3, 6, 12, 24, 48]) if (h >= e) s++; return Math.min(s, 6); };
 
@@ -45,7 +45,7 @@ const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let dataset = 'synthetic', fixture = null;
 const BANNER = {
   synthetic: 'Relay placement, routing and task allocation shown here are simulated outputs on a synthetic, seeded scenario. No aircraft is flying; nothing here is an instruction to anyone.',
-  npl: 'Settlements, centroids, silence hours and priority ranks are real rows from CORE (HDX COD-AB Nepal, EMSR927 scope). Every row is never_heard: "silent" here means DarkSpot has no coverage there yet, not that a settlement went quiet. Relays, radio range, routing, allocation and the ferry route are simulated. No aircraft is flying; nothing here is an instruction to anyone.',
+  npl: 'Settlements, centroids and priority ranks are real rows from CORE (HDX COD-AB Nepal, EMSR927 scope). Every row has coverage_basis = none: no device has ever been sighted there, so "no report" is absence of data, not a settlement going quiet. Relays, radio range, routing, allocation and the ferry route are simulated. No aircraft is flying; nothing here is an instruction to anyone.',
 };
 function makeScenario() {
   if (dataset === 'npl' && fixture) return scenarioFromPriorityRank(fixture.rows, { width: W, height: H, rangeKm: 12, maxSettlements: 30 });
@@ -67,11 +67,16 @@ function step() {
 // ---------------------------------------------------------------- drawing
 function node(n) { return engine.net ? engine.net.node(n) : null; }
 function tri(x, y, r) { ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r * 0.9, y + r * 0.7); ctx.lineTo(x - r * 0.9, y + r * 0.7); ctx.closePath(); }
-function label(text, x, y, color = C.label, align = 'left') {
+let drawnLabels = [];
+function label(text, x, y, color = C.label, align = 'left', { skipIfOverlap = false } = {}) {
   ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = align; ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(15,17,20,0.75)'; const w = ctx.measureText(text).width;
+  const w = ctx.measureText(text).width;
   const lx = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
-  ctx.fillRect(lx - 3, y - 7, w + 6, 14); ctx.fillStyle = color; ctx.fillText(text, x, y);
+  const box = [lx - 3, y - 7, w + 6, 14];
+  if (skipIfOverlap && drawnLabels.some(([bx, by, bw, bh]) => lx - 3 < bx + bw && lx - 3 + w + 6 > bx && y - 7 < by + bh && y + 7 > by)) return false;
+  drawnLabels.push(box);
+  ctx.fillStyle = 'rgba(15,17,20,0.75)'; ctx.fillRect(...box); ctx.fillStyle = color; ctx.fillText(text, x, y);
+  return true;
 }
 function polyline(points, { color, width = 1.5, dash = [], alpha = 1 }) {
   if (points.length < 2) return;
@@ -90,7 +95,7 @@ function pointAlong(points, t) {
 }
 
 function draw(now) {
-  const sc = engine.sc;
+  const sc = engine.sc; drawnLabels = [];
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
   for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
@@ -108,7 +113,7 @@ function draw(now) {
       const rs = [sc.bridge, ...f.gbest];
       for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) if (Math.hypot(rs[i].x - rs[j].x, rs[i].y - rs[j].y) <= sc.range) polyline([rs[i], rs[j]], { color: C.linkStrong, width: 1.5 });
       for (const r of f.gbest) { ctx.fillStyle = C.relay; tri(r.x, r.y, 8); ctx.fill(); }
-      label(`PSO iteration ${f.iter + 1}/${engine.psoFrames.length} · gbest fitness ${f.gbestFit.toFixed(3)} (0.7·SGC + 0.3·NCMC)`, 12, H - 16, C.label);
+      label(`PSO iteration ${f.iter + 1}/${engine.psoFrames.length} · gbest fitness ${f.gbestFit.toFixed(3)} (0.7·SGC + 0.3·NCMC)`, 12, H - 36, C.label);
     }
   } else {
     const net = engine.net;
@@ -161,13 +166,13 @@ function draw(now) {
     if (s.hazard === 'high') { ctx.strokeStyle = C.hazard; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(s.x, s.y, 10 + Math.min(6, s.priority), 0, Math.PI * 2); ctx.stroke(); }
     // D-18: only device_sighted_before_activation licenses the word "silent"; otherwise it is absence of data.
     const paired = snap.alloc?.suggested_pairings.some((p) => p.taskId === s.id);
-    if (!s.rank || s.rank <= 8 || paired) label(`${s.name ?? s.id} · ${coverageText(s)}`, s.x + 14, s.y, '#B9B2CF');
+    if (!s.rank || s.rank <= 8 || paired) label(`${s.name ?? s.id} · ${coverageText(s)}`, s.x + 14, s.y, '#B9B2CF', 'left', { skipIfOverlap: true });
   }
   // bridge
   ctx.fillStyle = C.bridge; ctx.fillRect(sc.bridge.x - 9, sc.bridge.y - 9, 18, 18); label('bridge', sc.bridge.x + 14, sc.bridge.y, C.bridge);
   // canvas-level simulation stamp (never removable)
-  label(engine.sc.meta ? 'SIMULATION · real HDX units + CORE ranks; relays/routing/allocation simulated · no aircraft, no instructions'
-                       : 'SIMULATION · synthetic seeded scenario · no aircraft, no instructions', W - 12, 16, C.ferry, 'right');
+  label(engine.sc.meta ? 'SIMULATION · real units/ranks, simulated relays+routing+allocation · no aircraft · no instructions'
+                       : 'SIMULATION · synthetic scenario · no aircraft · no instructions', W - 12, H - 16, C.ferry, 'right');
 }
 
 // ---------------------------------------------------------------- panels
