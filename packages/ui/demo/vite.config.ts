@@ -5,5 +5,6 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   plugins: [react()],
   server: { port: 5198, strictPort: true },
+  base: './',
   build: { outDir: '../dist-demo', emptyOutDir: true },
 });
