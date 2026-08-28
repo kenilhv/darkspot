@@ -132,12 +132,13 @@ WITH parent_pop AS (
     SELECT country_iso3, pcode, population FROM darkspot.pg_admin_units
 )
 SELECT
-    sd.disaster_event_id, sd.admin_unit_id, sd.settlement_pcode, sd.settlement_name, sd.granularity_level,
-    sd.never_heard, sd.report_count, sd.last_report_at,
+    sd.disaster_event_id AS disaster_event_id, sd.admin_unit_id AS admin_unit_id, sd.settlement_pcode AS settlement_pcode,
+    sd.settlement_name AS settlement_name, sd.granularity_level AS granularity_level,
+    sd.never_heard AS never_heard, sd.report_count AS report_count, sd.last_report_at AS last_report_at,
     sd.seconds_since_any_report / 3600.0                       AS silence_hours,
     coalesce(sd.population, pp.population)                     AS population_used,
     multiIf(sd.population IS NOT NULL, 'unit', pp.population IS NOT NULL, 'parent', 'none') AS population_basis,
-    sd.hazard_exposure,
+    sd.hazard_exposure AS hazard_exposure,
     sd.hazard_exposure = 'unknown'                             AS hazard_unknown,
     multiIf(sd.hazard_exposure = 'high', 3, sd.hazard_exposure = 'medium', 2, 1) AS hazard_weight,
     (sd.seconds_since_any_report / 3600.0) * coalesce(sd.population, pp.population)
