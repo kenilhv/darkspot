@@ -90,10 +90,22 @@ partner org defines different windows. `null` hours ⇒ the stale treatment, nev
 | Token | Value | Meaning |
 |---|---|---|
 | `canvas-bg` / `canvas-grid` | n-11 / white 4% | canvas ground |
-| `node-bridge` / `node-relay` / `node-unit` / `node-settlement` | beacon-300 / amber-300 / verdant-300 / n-5 | node kinds; settlement fill = its silence step |
+| `node-bridge` / `node-relay` / `node-unit` / `node-settlement` | beacon-300 / amber-300 / **sky-300** / n-5 | node kinds; settlement fill = its silence step. Units are sky, not green (D-16): verdant is human-verified only. |
 | `link` / `link-strong` | grey 35% / 80% | mesh link, by link quality |
 | `route` / `route-baseline` / `packet` | beacon-300 / n-6 / white | pheromone-reinforced path (AntHocNet) / AODV baseline / hop animation |
+| `pair-hungarian` / `pair-auction` | sky-300 solid / sky-300 dashed 3 3 | suggested unit↔task pairing: component has a path to command / local auction. Same hue, different line style; the allocation `note` is always rendered above them. |
 | `drone-route` | sim-300 | **always dashed + text label "SIMULATION"** |
+
+**Build-free consumers (D-17):** `packages/ui/tokens.json` is generated from `tokens.ts` on every
+build (`scripts/export-tokens.mjs`) and the same script fails the build if any hex in `tokens.css`
+and `tokens.ts` disagree. `swarm/web` should `fetch('tokens.json')` or `<link>` `src/tokens.css`
+rather than copy values. `sky` on the canvas: there is no focus ring on a canvas, so sky-300 is
+the one unreserved hue left for units and pairings — the reservation table in tokens.json says so.
+
+**Coverage wording (D-18/D-21):** `SettlementCard` only says *silent* when `coverageBasis ===
+'device_seen_before_activation'`; otherwise the swatch reads *no report* and the contact line says
+"No report received since activation · absence of data, not a signal". The value strings will be
+aligned to CORE's `coverage_basis` column when it lands.
 | `label` / `silence-ring` | n-0 / `#8F959E` | canvas text; outline so deep silence steps don't vanish into the dark canvas |
 
 All node/route colours ≥ 3:1 on the canvas; label 15.5:1. Node *kind* must also be encoded by

@@ -86,6 +86,8 @@ export interface SilenceSwatchProps extends HTMLAttributes<HTMLSpanElement> {
   /** Raw time since any confirmation, in hours. `null` = unknown. */
   hours: number | null;
   step: number | null;
+  /** Word after the duration. Default "silent"; SettlementCard passes "no report" when coverage is not evidenced (D-18). */
+  label?: string;
 }
 export function formatHours(h: number): string {
   if (h < 1) return `${Math.round(h * 60)} min`;
@@ -94,7 +96,7 @@ export function formatHours(h: number): string {
   const r = Math.round(h % 24);
   return r === 0 ? `${d} d` : `${d} d ${r} h`;
 }
-export function SilenceSwatch({ hours, step, className, ...rest }: SilenceSwatchProps) {
+export function SilenceSwatch({ hours, step, label = 'silent', className, ...rest }: SilenceSwatchProps) {
   if (hours == null || step == null) return <StaleMarker className={className} {...rest} />;
   const ink = silenceInk(step);
   return (
@@ -105,7 +107,7 @@ export function SilenceSwatch({ hours, step, className, ...rest }: SilenceSwatch
       {...rest}
     >
       <span className="ds-silence__hours ds-mono">{formatHours(hours)}</span>
-      <span className="ds-silence__label">silent</span>
+      <span className="ds-silence__label">{label}</span>
     </span>
   );
 }

@@ -33,12 +33,15 @@ export {
   type SimStatProps,
   type SimAllocationReadoutProps,
   type AllocationMode,
+  type AllocationPairing,
 } from './Sim';
 export {
   RawReport,
   SettlementCard,
   StatusChip,
   statusLabel,
+  coverageLabel,
+  type CoverageBasis,
   RESTRICTED_STATUS,
   RAW_WITHHELD_TEXT,
   type ExtractedStatus,

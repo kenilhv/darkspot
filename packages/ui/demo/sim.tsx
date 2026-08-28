@@ -80,7 +80,7 @@ export function SimDemo() {
             <SimStat label="Links cut" value={1} tone="hazard" />
             <SimStat label="Without command" value={3} detail="units" tone="attention" />
           </div>
-          <SimAllocationReadout modes={modes} unitsWithoutCommand={3} />
+          <SimAllocationReadout modes={modes} unitsWithoutCommand={3} note="Suggested unit/task pairings from a simulation. Not a dispatch order; requires human review before any action." pairings={[{ unitId: 'u1', taskId: 'Timure', cost: 4.2, mode: 'hungarian' }, { unitId: 'u4', taskId: 'Syabru', cost: 2.9, mode: 'auction' }]} />
           <SimLegend />
         </>
       }

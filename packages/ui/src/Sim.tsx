@@ -33,13 +33,15 @@ export function SimNodeGlyph({ kind, size = 14 }: { kind: SimNodeKind; size?: nu
   );
 }
 
-export type SimEdgeKind = 'link' | 'link-strong' | 'link-cut' | 'route' | 'route-baseline' | 'drone-route';
+export type SimEdgeKind = 'link' | 'link-strong' | 'link-cut' | 'route' | 'route-baseline' | 'pair-hungarian' | 'pair-auction' | 'drone-route';
 export const simEdgeLabel: Record<SimEdgeKind, string> = {
   link: 'Mesh link (in range)',
   'link-strong': 'Mesh link, low queue',
   'link-cut': 'Link failed',
   route: 'AntHocNet-inspired path (pheromone-reinforced)',
   'route-baseline': 'AODV baseline path',
+  'pair-hungarian': 'Suggested unit↔task pairing (path to command, Hungarian)',
+  'pair-auction': 'Suggested unit↔task pairing (local auction, no path to command)',
   'drone-route': 'UAV ferry route — SIMULATION',
 };
 export function SimEdgeGlyph({ kind, width = 28 }: { kind: SimEdgeKind; width?: number }) {
@@ -49,8 +51,10 @@ export function SimEdgeGlyph({ kind, width = 28 }: { kind: SimEdgeKind; width?: 
     : kind === 'link-cut' ? 'var(--ds-color-hazard)'
     : kind === 'route' ? 'var(--ds-sim-route)'
     : kind === 'route-baseline' ? 'var(--ds-sim-route-baseline)'
+    : kind === 'pair-hungarian' ? 'var(--ds-sim-pair-hungarian)'
+    : kind === 'pair-auction' ? 'var(--ds-sim-pair-auction)'
     : 'var(--ds-sim-drone-route)';
-  const dash = kind === 'link-cut' ? '2 3' : kind === 'drone-route' ? '6 4' : undefined;
+  const dash = kind === 'link-cut' ? '2 3' : kind === 'drone-route' ? '6 4' : kind === 'pair-auction' ? '3 3' : undefined;
   const w = kind === 'route' ? 3 : kind === 'link' ? 1 : 2;
   return (
     <svg className="ds-sim-glyph" width={width} height={10} viewBox={`0 0 ${width} 10`} aria-hidden="true" focusable="false">
@@ -64,7 +68,7 @@ export interface SimLegendProps extends HTMLAttributes<HTMLDivElement> {
   nodes?: SimNodeKind[];
   edges?: SimEdgeKind[];
 }
-export function SimLegend({ nodes = simNodeKinds, edges = ['link', 'link-strong', 'link-cut', 'route', 'route-baseline', 'drone-route'], className, ...rest }: SimLegendProps) {
+export function SimLegend({ nodes = simNodeKinds, edges = ['link', 'link-strong', 'link-cut', 'route', 'route-baseline', 'pair-hungarian', 'pair-auction', 'drone-route'], className, ...rest }: SimLegendProps) {
   return (
     <div className={cx('ds-simlegend', className)} role="group" aria-label="Legend" {...rest}>
       <span className="ds-simlegend__title">Nodes</span>
@@ -175,20 +179,36 @@ export interface AllocationMode {
   rounds?: number;
   idle?: boolean;
 }
+/** One row of `pairings[]` from allocation.js. */
+export interface AllocationPairing {
+  unitId: string | number;
+  taskId: string | number;
+  cost?: number;
+  mode: 'hungarian' | 'auction';
+}
 export interface SimAllocationReadoutProps extends HTMLAttributes<HTMLDivElement> {
   modes: AllocationMode[];
   unitsWithoutCommand?: number;
+  /**
+   * The `note` string from allocation.js, rendered VERBATIM above everything else
+   * (D-21 / RESEARCH review #1 finding 3). Required: no pairing is ever shown without it.
+   */
+  note: string;
+  /** Optional pairing list; only rendered because `note` is mandatory. */
+  pairings?: AllocationPairing[];
 }
 /**
  * Shows BOTH halves of the §2 allocation tension side by side — which mesh
  * components are solved centrally (Hungarian, path to command) and which fell
  * back to a local auction. Descriptive only: no pairing is rendered as an order.
  */
-export function SimAllocationReadout({ modes, unitsWithoutCommand, className, ...rest }: SimAllocationReadoutProps) {
+export function SimAllocationReadout({ modes, unitsWithoutCommand, note, pairings, className, ...rest }: SimAllocationReadoutProps) {
   const hung = modes.filter((m) => m.mode === 'hungarian');
   const auc = modes.filter((m) => m.mode === 'auction');
+  const noteText = note && note.trim() ? note : 'Suggested unit/task pairings from a simulation. Not a dispatch order; requires human review before any action.';
   return (
     <div className={cx('ds-simalloc', className)} role="group" aria-label="Task allocation mode by mesh component" {...rest}>
+      <p className="ds-simalloc__note" role="note">{noteText}</p>
       <div className="ds-simalloc__col">
         <span className="ds-simalloc__head">Hungarian · connected to command</span>
         <span className="ds-simalloc__count ds-mono">{hung.length} component{hung.length === 1 ? '' : 's'}</span>
@@ -206,6 +226,15 @@ export function SimAllocationReadout({ modes, unitsWithoutCommand, className, ..
           <span className="ds-simalloc__foot">{unitsWithoutCommand} unit{unitsWithoutCommand === 1 ? '' : 's'} without a path to command</span>
         )}
       </div>
+      {pairings && pairings.length > 0 && (
+        <ul className="ds-simalloc__pairs" aria-label="Suggested pairings (simulation)">
+          {pairings.map((p) => (
+            <li key={`${p.unitId}-${p.taskId}`} className={cx('ds-mono', `ds-simalloc__pair--${p.mode}`)}>
+              unit {p.unitId} ↔ task {p.taskId}{p.cost != null ? ` · cost ${p.cost.toFixed(1)}` : ''} · {p.mode}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

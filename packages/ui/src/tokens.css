@@ -78,7 +78,9 @@
   --ds-dusk-5: #3E3568;
   --ds-dusk-6: #1C1740;
 
-  /* Sky — keyboard focus ring only. Not beacon, so focus never reads as "selected". */
+  /* Sky — keyboard focus ring in the UI (not beacon, so focus never reads as
+     "selected"). On the sim canvas, where no focus ring exists, sky-300 is the
+     taskforce-unit / pairing hue — the only hue not reserved for an evidence state. */
   --ds-sky-500: #2F6FEB;
   --ds-sky-300: #7FB0FF;
 
@@ -162,13 +164,15 @@
   --ds-sim-canvas-grid:     rgba(255, 255, 255, 0.04);
   --ds-sim-node-bridge:     var(--ds-beacon-300);   /* bridge node (has backhaul) */
   --ds-sim-node-relay:      var(--ds-amber-300);    /* relay / mesh device */
-  --ds-sim-node-unit:       var(--ds-verdant-300);  /* taskforce unit */
+  --ds-sim-node-unit:       var(--ds-sky-300);      /* taskforce unit (D-16: verdant is human-verified only) */
   --ds-sim-node-settlement: var(--ds-n-5);          /* settlement ring (fill = silence step) */
   --ds-sim-link:            rgba(139, 145, 155, 0.35);
   --ds-sim-link-strong:     rgba(139, 145, 155, 0.8);
   --ds-sim-route:           var(--ds-beacon-300);   /* pheromone-reinforced path */
   --ds-sim-route-baseline:  var(--ds-n-6);          /* AODV baseline path */
   --ds-sim-packet:          #FFFFFF;
+  --ds-sim-pair-hungarian:  var(--ds-sky-300);      /* unit↔task pairing, solid: component has a path to command */
+  --ds-sim-pair-auction:    var(--ds-sky-300);      /* unit↔task pairing, dashed 3/3: local auction, no path to command */
   --ds-sim-drone-route:     var(--ds-sim-300);      /* ALWAYS dashed + labeled "SIMULATION" */
   --ds-sim-label:           var(--ds-n-0);
 

@@ -104,6 +104,8 @@ const pairs = [
   ['--ds-sim-route', '--ds-sim-canvas-bg', 3],
   ['--ds-sim-route-baseline', '--ds-sim-canvas-bg', 3],
   ['--ds-sim-drone-route', '--ds-sim-canvas-bg', 3],
+  ['--ds-sim-pair-hungarian', '--ds-sim-canvas-bg', 3],
+  ['--ds-sim-pair-auction', '--ds-sim-canvas-bg', 3],
   ['--ds-sim-label', '--ds-sim-canvas-bg', 4.5],
   ['--ds-silence-ring', '--ds-sim-canvas-bg', 3, 'dark only'],
   // adjacent silence steps must be distinguishable

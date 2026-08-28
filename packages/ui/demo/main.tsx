@@ -47,12 +47,12 @@ function Demo() {
       </section>
       <section>
         <h2>SettlementCard · RawReport</h2>
-        <SettlementCard rank={1} name="Timure" pcode="NP0304050" granularityLevel={3} neverHeard={false} reportCount={4} lastReportAt="09:14" silenceHours={9} populationUsed={46000} populationBasis="parent" hazardExposure="high" isStale windowHours={12} effectiveStatus="unknown, needs re-verification" corroboration={[{ extracted_status: 'needs_help', confidence_tier: 'corroborated-multi-source', distinct_devices: 3 }, { extracted_status: 'safe', confidence_tier: 'unverified-single-source', distinct_devices: 1 }]}>
+        <SettlementCard rank={1} name="Timure" pcode="NP0304050" granularityLevel={3} neverHeard={false} reportCount={4} lastReportAt="09:14" silenceHours={9} populationUsed={46000} populationBasis="parent" hazardExposure="high" coverageBasis="device_seen_before_activation" isStale windowHours={12} effectiveStatus="unknown, needs re-verification" corroboration={[{ extracted_status: 'needs_help', confidence_tier: 'corroborated-multi-source', distinct_devices: 3 }, { extracted_status: 'safe', confidence_tier: 'unverified-single-source', distinct_devices: 1 }]}>
           <RawReport id="e-42" receivedAt="2026-08-27T09:14:00Z" devicePubkey="ab12cd34ef56" hopCount={3} extractedStatus="needs_help" rawText={"bridge at Syabru gone, 12 families on the ridge above the school, need water"} extractionModel="extract-v0" extractionConfidence={0.82} />
           <RawReport id="e-47" receivedAt="2026-08-27T10:02:00Z" devicePubkey="77aa0011bb22" hopCount={5} extractedStatus="casualties" rawText="(withheld in demo)" />
         </SettlementCard>
         <div style={{ height: 12 }} />
-        <SettlementCard rank={2} name="Aanbu Khaireni" pcode="NP0403010" granularityLevel={3} neverHeard silenceHours={41} populationUsed={null} populationBasis="none" hazardExposure="unknown" />
+        <SettlementCard rank={2} name="Aanbu Khaireni" pcode="NP0403010" granularityLevel={3} neverHeard silenceHours={41} coverageBasis="no_prior_coverage" populationUsed={null} populationBasis="none" hazardExposure="unknown" />
       </section>
     </main>
   );

@@ -40,7 +40,10 @@ t('settlement card: rank, silence swatch with raw hours, never-heard wording, po
   const s = html(h(SettlementCard, row));
   assert.match(s, /aria-label="rank 1"/);
   assert.match(s, /41 h/); assert.match(s, /--ds-silence-5/);
-  assert.match(s, /Never heard from since activation/);
+  assert.match(s, /No report received since activation/); assert.doesNotMatch(s, /silent/, 'no coverage evidence: never the word silent'); assert.match(s, /no report</); assert.match(s, /absence of data/);
+  assert.match(s, /silence × population \(parent\) × hazard weight/);
+  const c = html(h(SettlementCard, { ...row, coverageBasis: 'device_seen_before_activation' }));
+  assert.match(c, /Silent: no report since activation/); assert.match(c, /silent</);
   assert.match(s, /46,000/); assert.match(s, /parent-district figure/);
   assert.match(s, /ds-hazard--high/); assert.match(s, /Hazard exposure: high/);
   assert.match(s, /ds-stale/); assert.match(s, /past the 12 h window/);

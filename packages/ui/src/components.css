@@ -126,6 +126,8 @@
 .ds-settlement__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--ds-space-3); margin: 0; }
 .ds-settlement__facts dt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); text-transform: uppercase; letter-spacing: var(--ds-tracking-wide); color: var(--ds-color-text-muted); }
 .ds-settlement__facts dd { margin: 2px 0 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.ds-settlement__formula { margin: 0; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-settlement__coverage { font-size: var(--ds-text-xs); }
 .ds-settlement__flag { color: var(--ds-color-attention); font-weight: var(--ds-weight-bold); }
 .ds-hazard { display: inline-flex; align-items: center; gap: var(--ds-space-1); font-weight: var(--ds-weight-bold); }
 .ds-hazard::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: currentColor; }
@@ -186,7 +188,7 @@
 /* ---------- Sim stat ---------- */
 .ds-simstat { display: flex; flex-direction: column; gap: 2px; padding: var(--ds-space-3); border: 1px solid var(--ds-color-border); border-radius: var(--ds-radius-md); background: var(--ds-color-bg); }
 .ds-simstat__label { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); text-transform: uppercase; letter-spacing: var(--ds-tracking-wide); color: var(--ds-color-text-muted); }
-.ds-simstat__value { font-size: var(--ds-text-xl); font-weight: 500; line-height: var(--ds-leading-tight); color: var(--ds-color-text-display); }
+.ds-simstat__value { font-size: var(--ds-text-lg); font-weight: 500; line-height: var(--ds-leading-tight); color: var(--ds-color-text-display); overflow-wrap: anywhere; }
 .ds-simstat__detail { font-size: var(--ds-text-xs); color: var(--ds-color-text-secondary); }
 .ds-simstat--accent .ds-simstat__value { color: var(--ds-color-accent); }
 .ds-simstat--attention { border-color: var(--ds-color-attention-soft-border); background: var(--ds-color-attention-soft); }
@@ -202,4 +204,8 @@
 .ds-simalloc__head { font-weight: var(--ds-weight-bold); color: var(--ds-color-text); }
 .ds-simalloc__count { font-size: var(--ds-text-lg); color: var(--ds-color-text-display); }
 .ds-simalloc__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.ds-simalloc__note { margin: 0; padding: var(--ds-space-2) var(--ds-space-3); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-simulation-ink); background: var(--ds-simulation-fill); border: 1px solid var(--ds-simulation-border); border-radius: var(--ds-radius-sm); }
+.ds-simalloc__pairs { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; color: var(--ds-color-text-secondary); }
+.ds-simalloc__pair--auction { border-inline-start: 2px dashed var(--ds-sim-pair-auction); padding-inline-start: var(--ds-space-2); }
+.ds-simalloc__pair--hungarian { border-inline-start: 2px solid var(--ds-sim-pair-hungarian); padding-inline-start: var(--ds-space-2); }
 .ds-simalloc__foot { margin-top: var(--ds-space-1); color: var(--ds-color-attention); font-weight: var(--ds-weight-bold); }

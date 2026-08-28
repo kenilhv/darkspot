@@ -23,6 +23,9 @@ t('legend: every node kind has an SVG shape (not colour-only) and a label; drone
   assert.match(s, /<circle/);
   for (const k of simNodeKinds) assert.match(s, new RegExp('--ds-sim-node-' + k));
   assert.match(s, /stroke-dasharray="6 4"/);
+  assert.match(s, /stroke-dasharray="3 3"/, 'auction pairing dashed');
+  assert.match(s, /--ds-sim-pair-hungarian/);
+  assert.doesNotMatch(s, /verdant/);
   assert.match(s, /SIMULATION/);
   assert.match(s, /AODV baseline/);
   assert.match(s, /AntHocNet/);
@@ -44,7 +47,12 @@ t('allocation readout: both modes side by side; idle, cost and rounds rendered',
     { component: 2, mode: 'auction', units: 2, tasks: 2, cost: 7.1, rounds: 2 },
     { component: 3, mode: 'auction', units: 1, tasks: 0, idle: true },
   ];
-  const s = html(h(SimAllocationReadout, { modes, unitsWithoutCommand: 3 }));
+  const NOTE = 'Suggested unit/task pairings from a simulation. Not a dispatch order; requires human review before any action.';
+  const s = html(h(SimAllocationReadout, { modes, unitsWithoutCommand: 3, note: NOTE, pairings: [{ unitId: 'u1', taskId: 't1', cost: 1, mode: 'auction' }] }));
+  assert.ok(s.includes(NOTE), 'note verbatim');
+  assert.ok(s.indexOf(NOTE) < s.indexOf('u1'), 'note precedes pairings');
+  assert.match(s, /ds-simalloc__pair--auction/);
+  assert.ok(html(h(SimAllocationReadout, { modes: [], note: '   ' })).includes('Not a dispatch order'), 'blank note falls back to the canonical note');
   assert.match(s, /Hungarian · connected to command/);
   assert.match(s, /Local auction · no path to command/);
   assert.match(s, /1 component</);
@@ -60,7 +68,7 @@ t('stat: label, value and tone class', () => {
   assert.match(s, /Links cut/);
 });
 t('no imperative vocabulary in any rendered text (Rule 1)', () => {
-  const all = [h(SimLegend, {}), h(SimAllocationReadout, { modes: [] }), h(SimFrame, { title: 'x', canvasDescription: 'y' }, 'c')].map(html).join(' ');
+  const all = [h(SimLegend, {}), h(SimAllocationReadout, { modes: [], note: 'n' }), h(SimFrame, { title: 'x', canvasDescription: 'y' }, 'c')].map(html).join(' ');
   assert.doesNotMatch(all, /\b(dispatch|send|go to|assign(ed)?|deploy|proceed to)\b/i);
 });
 console.log('\n' + n + ' assertion groups passed');

@@ -62,13 +62,18 @@ export const sim = {
   grid: 'rgba(255,255,255,0.04)',
   nodeBridge: palette.beacon[300],
   nodeRelay: palette.amber[300],
-  nodeUnit: palette.verdant[300],
+  /** D-16: verdant is reserved for human-verified; units are sky-300. */
+  nodeUnit: palette.sky[300],
   nodeSettlement: palette.n[5],
   link: 'rgba(139,145,155,0.35)',
   linkStrong: 'rgba(139,145,155,0.8)',
   route: palette.beacon[300],
   routeBaseline: palette.n[6],
   packet: '#FFFFFF',
+  /** unit↔task pairing where the component has a path to command (solid). */
+  pairHungarian: palette.sky[300],
+  /** unit↔task pairing from a local auction (dashed 3/3). */
+  pairAuction: palette.sky[300],
   /** Always drawn dashed and labeled "SIMULATION" (Rule 4). */
   droneRoute: palette.sim[300],
   label: palette.n[0],
