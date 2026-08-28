@@ -206,7 +206,7 @@ In priority order:
 
 | Component | Service | Live URL | Status |
 |---|---|---|---|
-| — | — | — | not yet deployed |
+| LibreChat + DarkSpot tool server + guard proxy | local docker compose (apps/chat/librechat, branch agent/chat) | http://localhost:3080 (Kenil’s machine only) | up; MCP registers 4 tools; chat returns 503 until UPSTREAM_API_KEY set — not deployed anywhere public |
 
 ---
 
