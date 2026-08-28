@@ -14,7 +14,8 @@ import { checkRule1 } from "../guard/rule1.ts";
 
 export type Row = Record<string, unknown>;
 
-export function stripRestricted<T extends Row>(row: T): Omit<T, (typeof RESTRICTED_COLUMNS)[number]> {
+export function stripRestricted<T extends Row>(row: T, authorized = false): Omit<T, (typeof RESTRICTED_COLUMNS)[number]> {
+  if (authorized) return row as any;
   const out: Row = {};
   for (const [k, v] of Object.entries(row)) {
     if ((RESTRICTED_COLUMNS as readonly string[]).includes(k)) continue;
@@ -24,17 +25,17 @@ export function stripRestricted<T extends Row>(row: T): Omit<T, (typeof RESTRICT
 }
 
 /** CORE's extracted_status values, with the casualty value redacted for non-authorized viewers. */
-export function publicStatus(status: unknown): string {
+export function publicStatus(status: unknown, authorized = false): string {
   const s = String(status ?? "");
-  if (s === RESTRICTED_STATUS) return RESTRICTED_STATUS_LABEL;
+  if (s === RESTRICTED_STATUS && !authorized) return RESTRICTED_STATUS_LABEL;
   return s || "unextracted";
 }
 
 export const RAW_WITHHELD = "raw text withheld: this report is casualty-related; readable only via a signed-off escalation (§1a Rule 2)";
 
 /** Raw text is the record and is normally quoted verbatim — except casualty-status reports, whose words ARE the restricted data. */
-export function rawOrWithheld(status: unknown, raw: string): string {
-  return String(status ?? "") === RESTRICTED_STATUS ? `> [${RAW_WITHHELD}]` : blockquote(raw);
+export function rawOrWithheld(status: unknown, raw: string, authorized = false): string {
+  return String(status ?? "") === RESTRICTED_STATUS && !authorized ? `> [${RAW_WITHHELD}]` : blockquote(raw);
 }
 
 export function blockquote(text: string): string {
@@ -69,10 +70,10 @@ export interface RankRow extends Row {
   is_stale?: number | boolean | null;
   effective_status?: string | null;
   window_hours?: number | null;
-  raw_reports?: { id: string; received_at: string; extracted_status: string; raw_text: string }[];
+  raw_reports?: { id: string; received_at: string; extracted_status: string; raw_text: string; extracted_people?: number | null }[];
 }
 
-export function formatPriorityRanking(region: string, rows: RankRow[], source: string): string {
+export function formatPriorityRanking(region: string, rows: RankRow[], source: string, authorized = false): string {
   if (rows.length === 0) return `Priority ranking for "${region}": ${source} has no rows matching this region (event id, event region text, or settlement name).`;
   const lines = [
     `Priority ranking for "${region}" — ${rows.length} settlement(s), source ${source}.`,
@@ -80,18 +81,18 @@ export function formatPriorityRanking(region: string, rows: RankRow[], source: s
     ``,
   ];
   for (const r0 of rows) {
-    const r = stripRestricted(r0);
+    const r = stripRestricted(r0, authorized);
     const pop = r.population_used == null ? "population unknown" : `population ~${r.population_used}` + (r.population_basis === "parent" ? " (parent unit figure — no unit-level census)" : "");
     const haz = !r.hazard_exposure || r.hazard_exposure === "unknown" ? "hazard exposure unknown" : `hazard exposure ${r.hazard_exposure}`;
     const heard = r.never_heard ? `never heard from since activation (${h(r.silence_hours)}h)` : `no report for ${h(r.silence_hours)}h (${r.report_count ?? "?"} report(s), last ${r.last_report_at ?? "?"})`;
     const stale = r.is_stale ? ` — STALE: last extracted status is past the ${r.window_hours ?? "?"}h window; effective status "${r.effective_status ?? "unknown, needs re-verification"}"` : "";
     lines.push(`${r.rank}. ${r.settlement_name} (pcode ${r.settlement_pcode}${r.granularity_level != null ? `, adm${r.granularity_level}` : ""}): ${heard}; ${pop}; ${haz}${stale}.`);
-    const corr = (r.corroboration ?? []).map((c) => `${publicStatus(c.extracted_status)}: ${c.confidence_tier} (${c.distinct_devices} distinct device(s))`);
+    const corr = (r.corroboration ?? []).map((c) => `${publicStatus(c.extracted_status, authorized)}: ${c.confidence_tier} (${c.distinct_devices} distinct device(s))`);
     lines.push(`   confidence: ${corr.length ? corr.join("; ") : "no extracted reports — unverified"}`);
     lines.push(`   cited: ${source} row settlement_pcode=${r.settlement_pcode}`);
     for (const rep of r.raw_reports ?? []) {
-      lines.push(`   raw report (mesh_events id=${rep.id}, received ${rep.received_at}, extracted_status=${publicStatus(rep.extracted_status)}), verbatim:`);
-      lines.push(rawOrWithheld(rep.extracted_status, rep.raw_text));
+      lines.push(`   raw report (mesh_events id=${rep.id}, received ${rep.received_at}, extracted_status=${publicStatus(rep.extracted_status, authorized)}${authorized && rep.extracted_people != null ? ", people stated=" + rep.extracted_people : ""}), verbatim:`);
+      lines.push(rawOrWithheld(rep.extracted_status, rep.raw_text, authorized));
     }
   }
   return lines.join("\n");
@@ -110,7 +111,7 @@ export interface ConflictRow extends Row {
   reports_side_by_side: SideBySide[];
 }
 
-export function formatConflicts(settlement: string, rows: ConflictRow[], source: string): string {
+export function formatConflicts(settlement: string, rows: ConflictRow[], source: string, authorized = false): string {
   if (rows.length === 0) return `Conflicts for "${settlement}": ${source} has no disagreeing reports (distinct statuses from distinct devices inside the staleness window) for this settlement.`;
   const lines = [
     `Conflicting reports for "${settlement}" — ${rows.length} settlement(s) with disagreement, source ${source}. Shown side by side; nothing is resolved here.`,
@@ -119,8 +120,8 @@ export function formatConflicts(settlement: string, rows: ConflictRow[], source:
   for (const r of rows) {
     lines.push(`- ${r.settlement_name ?? r.settlement_pcode} (pcode ${r.settlement_pcode}): ${r.distinct_statuses} distinct statuses from ${r.distinct_devices} distinct devices.`);
     for (const [status, dev, at, raw, id] of r.reports_side_by_side) {
-      lines.push(`  - mesh_events id=${id} at ${at}, device ${String(dev).slice(0, 8)}…, extracted_status=${publicStatus(status)}:`);
-      lines.push(rawOrWithheld(status, raw));
+      lines.push(`  - mesh_events id=${id} at ${at}, device ${String(dev).slice(0, 8)}…, extracted_status=${publicStatus(status, authorized)}:`);
+      lines.push(rawOrWithheld(status, raw, authorized));
     }
   }
   return lines.join("\n");

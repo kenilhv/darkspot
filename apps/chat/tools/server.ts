@@ -30,6 +30,7 @@ import { chColumns, chConfigFromEnv, chQuery, type ChConfig } from "./clickhouse
 import { extractOptionsFromEnv, extractReport, publicFields } from "../intake/extract.ts";
 import { newReport, storeReport } from "../intake/store.ts";
 import { getTracer } from "../trace/honeyhive.ts";
+import { ANON, resolveAccess, viewerFromHeaders, type Authorization, type Viewer } from "./access.ts";
 import { blockquote, formatConflicts, formatPriorityRanking, formatRoutePlan, guardToolText, notAvailable, type ConflictRow, type RankRow, type RouteRow } from "./format.ts";
 
 const PORT = Number(process.env.PORT ?? 3311);
@@ -85,7 +86,24 @@ const text = (t: string) => {
 
 // ---------- tools ----------
 
-export function buildServer(): McpServer {
+/** Resolve the caller's access level for an event (D-14). Fails closed; the reason is printed in the tool output. */
+async function authFor(viewer: Viewer, disasterEventId: string | null): Promise<Authorization> {
+  const url = process.env.DATABASE_URL;
+  if (!url || !viewer.subject) return resolveAccess(viewer, disasterEventId, null);
+  const client = new pg.Client({ connectionString: url });
+  try {
+    await client.connect();
+    return await resolveAccess(viewer, disasterEventId, (sql, params) => client.query(sql, params as any[]));
+  } catch (e) {
+    return { ...ANON, reason: `principals lookup failed (${(e as Error).message}) — aggregate_only` };
+  } finally {
+    try { await client.end(); } catch {}
+  }
+}
+
+const accessLine = (a: Authorization) => `access: ${a.level} — ${a.reason}`;
+
+export function buildServer(viewer: Viewer = { subject: null, trusted: true }): McpServer {
   const server = new McpServer({ name: "darkspot-coordinator-tools", version: "0.2.0" });
 
   server.registerTool(
@@ -103,7 +121,7 @@ export function buildServer(): McpServer {
       if (!ready.ok) return text(notAvailable("Priority ranking", ready.why));
       const rows = await chQuery<RankRow>(
         ready.cfg,
-        `SELECT p.settlement_pcode AS settlement_pcode, p.settlement_name AS settlement_name, p.rank AS rank, p.silence_hours AS silence_hours, p.never_heard AS never_heard, p.report_count AS report_count,
+        `SELECT toString(p.disaster_event_id) AS disaster_event_id, p.settlement_pcode AS settlement_pcode, p.settlement_name AS settlement_name, p.rank AS rank, p.silence_hours AS silence_hours, p.never_heard AS never_heard, p.report_count AS report_count,
                 toString(p.last_report_at) AS last_report_at, p.population_used AS population_used, p.population_basis AS population_basis, p.hazard_exposure AS hazard_exposure, p.hazard_unknown AS hazard_unknown,
                 c.corroboration AS corroboration, s.is_stale AS is_stale, s.effective_status AS effective_status, s.window_hours AS window_hours
          FROM priority_rank p
@@ -121,18 +139,19 @@ export function buildServer(): McpServer {
          ORDER BY p.rank ASC LIMIT {limit:UInt32}`,
         { region, limit },
       );
+      const auth = await authFor(viewer, rows.length ? String(rows[0].disaster_event_id) : null);
       for (const r of rows) {
         // groupArray(map) arrives as array of string maps; normalise
         r.corroboration = ((r.corroboration as any[]) ?? []).map((m: any) => ({ extracted_status: m.extracted_status, confidence_tier: m.confidence_tier, distinct_devices: Number(m.distinct_devices) }));
         if (Number(r.report_count) > 0) {
           r.raw_reports = await chQuery(
             ready.cfg,
-            "SELECT toString(id) AS id, toString(received_at) AS received_at, extracted_status, raw_text FROM mesh_events WHERE settlement_pcode = {pc:String} ORDER BY received_at DESC LIMIT 3",
+            "SELECT toString(id) AS id, toString(received_at) AS received_at, extracted_status, raw_text, extracted_people FROM mesh_events WHERE settlement_pcode = {pc:String} ORDER BY received_at DESC LIMIT 3",
             { pc: r.settlement_pcode },
           );
         }
       }
-      return text(formatPriorityRanking(region, rows, `${ready.cfg.db}.priority_rank`));
+      return text(formatPriorityRanking(region, rows, `${ready.cfg.db}.priority_rank`, auth.authorized) + "\n\n" + accessLine(auth));
     }),
   );
 
@@ -149,7 +168,7 @@ export function buildServer(): McpServer {
       if (!ready.ok) return text(notAvailable("Conflicts", ready.why));
       const rows = await chQuery<ConflictRow>(
         ready.cfg,
-        `SELECT c.settlement_pcode, any(au.name) AS settlement_name, any(c.distinct_statuses) AS distinct_statuses, any(c.distinct_devices) AS distinct_devices,
+        `SELECT toString(any(c.disaster_event_id)) AS disaster_event_id, c.settlement_pcode, any(au.name) AS settlement_name, any(c.distinct_statuses) AS distinct_statuses, any(c.distinct_devices) AS distinct_devices,
                 any(arrayMap(x -> (x.1, x.2, toString(x.3), x.4, toString(x.5)), c.reports_side_by_side)) AS reports_side_by_side
          FROM conflicts c
          LEFT JOIN pg_admin_units au ON au.pcode = c.settlement_pcode
@@ -157,7 +176,8 @@ export function buildServer(): McpServer {
          GROUP BY c.settlement_pcode LIMIT 50`,
         { s: settlement },
       );
-      return text(formatConflicts(settlement, rows, `${ready.cfg.db}.conflicts`));
+      const auth = await authFor(viewer, rows.length ? String(rows[0].disaster_event_id) : null);
+      return text(formatConflicts(settlement, rows, `${ready.cfg.db}.conflicts`, auth.authorized) + "\n\n" + accessLine(auth));
     }),
   );
 
@@ -227,7 +247,7 @@ export function buildServer(): McpServer {
 const http = createServer(async (req, res) => {
   if (req.url === "/healthz") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clickhouse: Boolean(process.env.CLICKHOUSE_URL), postgres: Boolean(process.env.DATABASE_URL), bridge_identity: Boolean(process.env.BRIDGE_PUBKEY_HEX), tracing: tracer.mode }));
+    res.end(JSON.stringify({ ok: true, clickhouse: Boolean(process.env.CLICKHOUSE_URL), postgres: Boolean(process.env.DATABASE_URL), bridge_identity: Boolean(process.env.BRIDGE_PUBKEY_HEX), tracing: tracer.mode, identity_headers: "X-DarkSpot-Subject (+ X-DarkSpot-Tools-Token" + (process.env.TOOLS_SHARED_SECRET ? " required)" : " not enforced: TOOLS_SHARED_SECRET unset)") }));
     return;
   }
   if (!req.url?.startsWith("/mcp")) {
@@ -235,7 +255,8 @@ const http = createServer(async (req, res) => {
     return;
   }
   // Stateless: a fresh server+transport per request (SDK-recommended pattern for stateless streamable HTTP).
-  const server = buildServer();
+  const viewer = viewerFromHeaders(req.headers as any, process.env.TOOLS_SHARED_SECRET);
+  const server = buildServer(viewer);
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   res.on("close", () => {
     transport.close();

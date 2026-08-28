@@ -29,4 +29,10 @@ mcpServers:
     type: streamable-http
     url: "http://darkspot-tools:3311/mcp"
     timeout: 60000
+    # D-14: the caller identity the tool server maps to CORE's principals.external_subject. Set server-side by
+    # LibreChat from the authenticated session — never from anything the user types. Requires sse/streamable-http.
+    headers:
+      X-DarkSpot-Subject: "{{LIBRECHAT_USER_ID}}"
+      X-DarkSpot-Subject-Email: "{{LIBRECHAT_USER_EMAIL}}"
+      X-DarkSpot-Tools-Token: "${TOOLS_SHARED_SECRET}"
     serverInstructions: true

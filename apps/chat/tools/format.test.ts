@@ -79,3 +79,16 @@ test("guardToolText withholds a formatter bug that produced a directive", () => 
   assert.match(t, /withheld by the Rule 1 guard/);
   assert.doesNotMatch(t, /Ward 4/);
 });
+
+test("an authorized viewer (individual_pii) sees the casualty status, headcount and raw text; default stays withheld", () => {
+  const rows = [{ settlement_pcode: "NP1", settlement_name: "X", rank: 1, silence_hours: 1, report_count: 1, corroboration: [{ extracted_status: "casualties", confidence_tier: "unverified-single-source", distinct_devices: 1 }], raw_reports: [{ id: "a", received_at: "t", extracted_status: "casualties", raw_text: "two dead at the school", extracted_people: 2 }] }];
+  const open = formatPriorityRanking("r", rows, "src", true);
+  assert.match(open, /casualties: unverified-single-source/);
+  assert.match(open, /extracted_status=casualties, people stated=2/);
+  assert.match(open, /^> two dead at the school$/m);
+  const closed = formatPriorityRanking("r", rows, "src");
+  assert.doesNotMatch(closed, /two dead|people stated/);
+  const cf = formatConflicts("X", [{ settlement_pcode: "NP1", distinct_statuses: 2, distinct_devices: 2, reports_side_by_side: [["casualties", "aa", "t", "two hurt", "i1"], ["safe", "bb", "t", "fine", "i2"]] }], "src", true);
+  assert.match(cf, /^> two hurt$/m);
+  assert.match(cf, /extracted_status=casualties:/);
+});
