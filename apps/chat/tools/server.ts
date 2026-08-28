@@ -109,6 +109,7 @@ export function buildServer(): McpServer {
          ) c ON c.disaster_event_id = p.disaster_event_id AND c.settlement_pcode = p.settlement_pcode
          LEFT JOIN staleness s ON s.disaster_event_id = p.disaster_event_id AND s.settlement_pcode = p.settlement_pcode
          WHERE toString(p.disaster_event_id) = {region:String}
+            OR p.settlement_pcode = {region:String}
             OR positionCaseInsensitive(e.region, {region:String}) > 0
             OR positionCaseInsensitive(p.settlement_name, {region:String}) > 0
          ORDER BY p.rank ASC LIMIT {limit:UInt32}`,
