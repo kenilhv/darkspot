@@ -1,0 +1,30 @@
+# Render blueprint — https://render.com/docs/blueprint-spec
+#
+# One static site serving all three browser surfaces:
+#   /              landing page
+#   /coordinator/  coordinator view (React; real HDX admin units + Copernicus/HOT hazard extent)
+#   /sim/          swarm-intelligence simulation (PSO placement, AntHocNet routing, allocation)
+#
+# site/ is committed rather than built here on purpose. Its inputs live on two other
+# branches of this repo (agent/design-system, agent/swarm), so a build step would have to
+# fetch and npm-install both on every deploy — more failure modes than a hackathon deploy
+# should carry. Regenerate locally with `node scripts/build-site.mjs` and commit the result.
+#
+# NOT deployed here, and the site does not claim otherwise: LibreChat (a multi-container
+# stack with its own MongoDB) and the MCP tool server (needs ClickHouse/Postgres credentials
+# that are not in this repo). Both run locally — see README.
+services:
+  - type: web
+    name: darkspot
+    runtime: static
+    plan: free
+    buildCommand: ""
+    staticPublishPath: ./site
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin

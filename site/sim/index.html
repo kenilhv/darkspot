@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DarkSpot — swarm layer simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./sim.css" />
+</head>
+<body>
+<div class="frame">
+  <!-- Rule 4: this banner is not optional and has no close control. -->
+  <div class="banner" role="note" aria-label="Simulation notice">
+    <span class="banner__tag">SIMULATION</span>
+    <span id="banner-text">Relay placement, routing and task allocation shown here are simulated outputs on a synthetic, seeded scenario. No aircraft is flying; nothing here is an instruction to anyone.</span>
+  </div>
+
+  <header class="top">
+    <div>
+      <h1>DarkSpot · swarm-intelligence layer</h1>
+      <p class="sub">PSO relay placement → AntHocNet-inspired routing (AODV baseline alongside) → taskforce allocation: Hungarian where a unit can reach command, local auction where it can't.</p>
+    </div>
+    <div class="controls" role="toolbar" aria-label="Simulation controls">
+      <button id="btn-run" class="btn btn--primary" type="button" aria-pressed="false">Run</button>
+      <button id="btn-step" class="btn" type="button">Step</button>
+      <button id="btn-reset" class="btn" type="button">Reset</button>
+      <label class="speed">data
+        <select id="dataset" aria-label="Scenario data source">
+          <option value="synthetic" selected>synthetic (seeded)</option>
+          <option value="npl">Nepal EMSR927 — CORE priority_rank snapshot (real units, exported 14:3x)</option>
+        </select>
+      </label>
+      <label class="speed">speed
+        <select id="speed" aria-label="Ticks per second">
+          <option value="1">1 tick/s</option><option value="2" selected>2 ticks/s</option><option value="4">4 ticks/s</option><option value="8">8 ticks/s</option>
+        </select>
+      </label>
+      <span id="tick" class="mono tick" aria-live="off">tick 0</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="canvas-wrap" role="region" aria-label="Simulation canvas">
+      <canvas id="sim" width="900" height="560" aria-describedby="canvas-desc"></canvas>
+      <p id="canvas-desc" class="visually-hidden" aria-live="polite"></p>
+      <div class="phase mono" id="phase">placing relays…</div>
+    </section>
+
+    <aside class="side">
+      <section class="card" aria-label="Legend">
+        <h2>Legend</h2>
+        <ul class="legend">
+          <li><span class="g g--bridge"></span> bridge / command node</li>
+          <li><span class="g g--relay"></span> relay (PSO-placed, simulated)</li>
+          <li><span class="g g--unit"></span> field unit</li>
+          <li><span class="g g--sett"></span> settlement — fill = raw hours since any confirmation</li>
+          <li><span class="g g--link"></span> mesh link (within radio range)</li>
+          <li><span class="g g--route"></span> AntHocNet packet path · <span class="g g--base"></span> AODV baseline path</li>
+          <li><span class="g g--pair"></span> suggested pairing — solid: Hungarian · dotted: local auction</li>
+          <li><span class="g g--ferry"></span> UAV ferry route — SIMULATION</li>
+        </ul>
+      </section>
+
+      <section class="card" aria-label="Simulation inputs">
+        <h2>Simulation inputs — what if…</h2>
+        <div class="btns">
+          <button id="ev-congest" class="btn" type="button">…a relay congests</button>
+          <button id="ev-cut" class="btn" type="button">…a relay fails</button>
+          <button id="ev-bump" class="btn" type="button">…a settlement's priority rises</button>
+          <button id="ev-restore" class="btn" type="button">…reset the scenario</button>
+        </div>
+        <p class="hint">These are scenario perturbations of the simulation, not operator actions. Each changes one input; on the next tick routing re-spreads (or, on the AODV baseline, doesn't), allocation modes flip, suggested pairings move.</p>
+      </section>
+
+      <section class="card" aria-label="Readouts">
+        <h2>Readouts</h2>
+        <dl class="stats" id="stats"></dl>
+      </section>
+
+      <section class="card" aria-label="Task allocation mode by mesh component">
+        <h2>Allocation by mesh component</h2>
+        <div class="alloc">
+          <div><div class="alloc__head alloc__head--h">Hungarian · connected to command</div><ul id="alloc-h" class="mono"></ul></div>
+          <div><div class="alloc__head alloc__head--a">Local auction · no path to command</div><ul id="alloc-a" class="mono"></ul></div>
+        </div>
+        <p class="hint" id="alloc-note"></p>
+      </section>
+
+      <section class="card" aria-label="Event log">
+        <h2>Log</h2>
+        <ol id="log" class="log mono" aria-live="polite"></ol>
+      </section>
+
+      <section class="card card--muted" aria-label="Sources">
+        <h2>What this is built on</h2>
+        <ul class="src">
+          <li>Relay placement: WMN-PSO node-placement fitness (Sakamoto et al., CISIS 2016); PSO per Kennedy & Eberhart 1995, Shi & Eberhart 1998. Simulation-stage academic work — <em>swarm-intelligence-inspired</em>, not a proven self-organising field mesh.</li>
+          <li>Routing: AntHocNet (Ducatelle, Di Caro, Gambardella, IJCIA 2005), eqs 1–8 as published; AODV per RFC 3561. No swarm routing protocol has real disaster field testing.</li>
+          <li>Allocation: ST-SR-IA (Gerkey & Matarić, IJRR 2004); Hungarian (Kuhn 1955 / Munkres 1957); sequential single-item auction (Koenig et al., AAAI 2006; Dias et al., Proc. IEEE 2006).</li>
+          <li>Ferry: message-ferry concept (Zhao, Ammar & Zegura, MobiHoc 2004). Tour is a nearest-neighbour heuristic. Not an airspace-deconflicted plan.</li>
+        </ul>
+      </section>
+    </aside>
+  </main>
+</div>
+<script type="module" src="./sim.js"></script>
+</body>
+</html>

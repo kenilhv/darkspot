@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DarkSpot — an offline-first evidence layer for disaster response</title>
+<meta name="description" content="DarkSpot ranks silence, not reports: which populated places have gone longest without any confirmation after a disaster. Evidence for human incident command — never an instruction." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<div class="frame">
+
+  <header class="hero">
+    <p class="eyebrow">Prototype · disaster-response decision support</p>
+    <h1>DarkSpot</h1>
+    <p class="lede">
+      Every disaster dashboard ranks the places that are <em>reporting</em>. The places most at
+      risk are often the ones that have gone <strong>completely silent</strong> — because their
+      connectivity was marginal before the disaster and gone after it.
+      DarkSpot ranks the silence.
+    </p>
+    <p class="lede lede--sub">
+      It collects reports from places with no network at all (phone-to-phone mesh relay,
+      store-and-forward), corroborates them by distinct device identity, and hands the result to
+      whoever actually holds authority on the ground. It never issues an instruction.
+    </p>
+  </header>
+
+  <section class="honesty" role="note" aria-label="What this is and is not">
+    <strong>What this is, honestly.</strong> A working prototype, not a deployed system. The data
+    below is real — 1,440 administrative units from the UN's Humanitarian Data Exchange, flood
+    extent from Copernicus/HOT, computed live in ClickHouse — but no DarkSpot device has ever been
+    deployed in the field, so <em>silence here means absence of data, not a settlement going quiet</em>.
+    Every UAV route shown is a labelled simulation, never deconflicted with any airspace authority.
+    Before a single real decision could lean on this it needs an authorised partner organisation,
+    airspace integration, and field validation.
+  </section>
+
+  <h2 class="sec">The four surfaces</h2>
+  <ul class="cards">
+
+    <li class="card">
+      <span class="card__tag card__tag--live">live data</span>
+      <h3><a href="./coordinator/">Coordinator view</a></h3>
+      <p>
+        61 in-scope settlements for the Trishuli basin flood, ranked by silence × population ×
+        hazard. Every card prints its own factors, its confidence tier, and what the data
+        cannot say. The rank is a sort order, never a risk score.
+      </p>
+      <p class="card__meta">React · <span class="mono">@darkspot/ui</span> · WCAG-checked palette</p>
+    </li>
+
+    <li class="card">
+      <span class="card__tag card__tag--sim">simulation</span>
+      <h3><a href="./sim/">Swarm-intelligence layer</a></h3>
+      <p>
+        Mesh formation by particle-swarm relay placement, AntHocNet-inspired adaptive routing
+        against an AODV baseline, and taskforce allocation two ways — Hungarian where a unit can
+        reach command, decentralised auction where it can't. Press Run and watch the mesh form.
+      </p>
+      <p class="card__meta">Every algorithm cited to its paper on the page itself</p>
+    </li>
+
+    <li class="card">
+      <span class="card__tag">needs a running stack</span>
+      <h3>Grounded chat <span class="card__host">LibreChat</span></h3>
+      <p>
+        A coordinator asks in plain language; the answer comes back as cited rows from ClickHouse,
+        never as a command. A deterministic guard sits between the model and the user and blocks
+        any imperative before it is ever shown — enforced in a proxy, not hoped for in a prompt.
+      </p>
+      <p class="card__meta">
+        Runs at <span class="mono">localhost:3080</span> against the local stack.
+        <a href="https://github.com/kenilhv/darkspot#librechat">How it is wired →</a>
+      </p>
+    </li>
+
+    <li class="card">
+      <span class="card__tag card__tag--live">live data</span>
+      <h3>ClickHouse + Postgres <span class="card__host">OLAP + OLTP</span></h3>
+      <p>
+        Postgres holds canonical state and every human decision. ClickHouse reads it live over a
+        cross-database bridge and recomputes the silence ranking on each query — the elapsed
+        clock advances between two runs of the same query, because nothing is precomputed.
+      </p>
+      <p class="card__meta mono">darkspot.priority_rank · darkspot.silence_duration</p>
+    </li>
+
+  </ul>
+
+  <section class="rules">
+    <h2 class="sec">Four rules the build is not allowed to break</h2>
+    <ol>
+      <li><strong>No dispatch action exists in the data model.</strong> DarkSpot can say what is known. It cannot say where to go.</li>
+      <li><strong>No casualty, location or urgency field becomes actionable without a named human.</strong> Enforced as a <span class="mono">NOT NULL</span> column, not a UI convention.</li>
+      <li><strong>The safety-critical core runs with no LLM at all.</strong> Ranking and allocation are deterministic; the model only narrates a result that already exists.</li>
+      <li><strong>Every UAV route is a labelled simulation</strong> until deconflicted with a real airspace authority. Uncoordinated drones ground real rescue aircraft.</li>
+    </ol>
+  </section>
+
+  <footer class="foot">
+    <p>
+      Built for the ClickHouse <em>Better Days</em> hackathon, and continuing past it.
+      Motivated by the Trishuli basin glacial-lake outburst flood of 26 August 2026, but built to
+      be region- and hazard-agnostic: administrative boundaries, population and hazard extent are
+      pluggable connectors, and the system stays inert for a region until a real organisation registers for it.
+    </p>
+    <p class="mono foot__links">
+      <a href="https://github.com/kenilhv/darkspot">github.com/kenilhv/darkspot</a>
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>

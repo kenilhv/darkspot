@@ -1,0 +1,91 @@
+/* Landing page. Palette mirrors @darkspot/ui tokens (DESIGN, agent/design-system) so the three
+   surfaces read as one system. Colour reservations from that design system are respected here:
+   verdant green = human-verified only, magenta = simulation only, teal = interactive. */
+:root {
+  --n0: #F7F6F2; --n5: #85817A; --n6: #8B919B; --n7: #646A73; --n8: #454A52;
+  --n9: #262B33; --n10: #1E2229; --n11: #171A1F; --n12: #0F1114;
+  --beacon-300: #62B4C0; --beacon-500: #1F8A9B;
+  --verdant-300: #63B77F; --amber-300: #E6B24C; --ember-300: #EF8A66;
+  --sim-300: #E477BF; --sim-500: #C0308F;
+  --ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; background: var(--n12); color: var(--n0);
+  font-family: var(--ui); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--beacon-300); }
+a:focus-visible, .card h3 a:focus-visible { outline: 2px solid var(--beacon-300); outline-offset: 3px; border-radius: 3px; }
+.mono { font-family: var(--mono); }
+.frame { max-width: 980px; margin: 0 auto; padding: 56px 20px 72px; }
+
+/* ---- hero ---- */
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--n6); margin: 0 0 14px;
+}
+h1 {
+  font-size: clamp(40px, 7vw, 60px); line-height: 1.02; margin: 0 0 20px;
+  font-weight: 700; letter-spacing: -0.02em;
+}
+.lede { font-size: clamp(17px, 2.1vw, 20px); max-width: 68ch; margin: 0 0 14px; color: #DCDCD6; }
+.lede em { color: var(--n0); font-style: italic; }
+.lede strong { color: var(--amber-300); font-weight: 700; }
+.lede--sub { font-size: 16px; color: var(--n6); }
+.lede--sub strong { color: var(--n0); }
+
+/* ---- honesty note: the one thing that must never look like decoration ---- */
+.honesty {
+  margin: 32px 0 44px; padding: 16px 18px; font-size: 14.5px; color: #E8DFC9;
+  background: #221D14; border: 1px solid #4A3F26; border-left: 4px solid var(--amber-300);
+  border-radius: 8px; max-width: 78ch;
+}
+.honesty strong { color: var(--amber-300); }
+.honesty em { color: var(--n0); font-style: normal; font-weight: 700; }
+
+.sec {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--n6); margin: 0 0 16px; font-weight: 500;
+}
+
+/* ---- surface cards ---- */
+.cards { list-style: none; margin: 0 0 52px; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.card {
+  background: var(--n10); border: 1px solid var(--n9); border-radius: 12px;
+  padding: 18px 20px 16px; display: flex; flex-direction: column;
+}
+.card:hover { border-color: var(--n8); }
+.card h3 { font-size: 19px; margin: 10px 0 10px; font-weight: 700; }
+.card h3 a { text-decoration: none; }
+.card h3 a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.card p { margin: 0 0 10px; color: #C9CBCE; font-size: 14.5px; }
+.card__host { font-family: var(--mono); font-size: 12px; color: var(--n6); font-weight: 400; letter-spacing: .04em; }
+.card__meta { font-size: 12.5px; color: var(--n7); margin-top: auto; padding-top: 4px; }
+.card__tag {
+  align-self: flex-start; font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 4px;
+  background: var(--n9); color: var(--n6); border: 1px solid var(--n8);
+}
+/* verdant = verified-real, per the design system's colour reservation */
+.card__tag--live { background: #17301F; color: var(--verdant-300); border-color: #285139; }
+/* magenta = simulation, per Rule 4 */
+.card__tag--sim { background: #2A1A25; color: var(--sim-300); border-color: var(--sim-500); }
+
+/* ---- rules ---- */
+.rules { border-top: 1px solid var(--n9); padding-top: 32px; }
+.rules ol { margin: 0; padding-left: 22px; display: grid; gap: 12px; max-width: 78ch; }
+.rules li { color: #C9CBCE; font-size: 14.5px; }
+.rules li strong { color: var(--n0); }
+
+/* ---- footer ---- */
+.foot { border-top: 1px solid var(--n9); margin-top: 44px; padding-top: 24px; color: var(--n7); font-size: 13.5px; max-width: 78ch; }
+.foot p { margin: 0 0 12px; }
+.foot em { color: var(--n6); }
+.foot__links { font-size: 13px; }
+
+@media (max-width: 600px) {
+  .frame { padding: 36px 16px 56px; }
+  .honesty { margin: 24px 0 36px; }
+}
