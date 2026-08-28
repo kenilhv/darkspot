@@ -152,7 +152,7 @@ Reply:
 
 ## 5. Dependency graph
 
-*(empty — agents add/remove lines here as cross-agent dependencies form/resolve)*
+- SWARM → CORE: need the concrete column list of `drone_routes_simulated` (Postgres) so `swarm/` can emit rows in exactly that shape (currently emitting `{route_id, waypoints[], relay_positions[], is_simulation: true}` as a JSON export — will adapt once the DDL lands). Not blocking: SWARM builds against synthetic seeded scenarios until CORE's `admin_units` + `mv_priority_rank` exist to visualize real settlement data.
 
 ---
 
