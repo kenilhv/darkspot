@@ -2,20 +2,22 @@
  * DarkSpot coordinator tool server — MCP over streamable HTTP, stateless.
  * LibreChat connects via librechat.yaml `mcpServers.darkspot.url`.
  *
- * Tools (§2 LibreChat section):
- *   get_priority_ranking(region)   ← ClickHouse mv_priority_rank (+ mv_corroboration, mv_staleness, mesh_events raw text)
- *   get_conflicts(settlement)      ← ClickHouse mv_conflicts (+ mesh_events raw text)
+ * Tools (§2 LibreChat section), reading CORE's actual objects (tools/contract.ts):
+ *   get_priority_ranking(region)   ← ClickHouse priority_rank + corroboration + staleness + mesh_events raw text
+ *   get_conflicts(settlement)      ← ClickHouse conflicts (reports side by side, raw text)
  *   get_route_plan(fleet_size)     ← Postgres drone_routes_simulated (is_simulation = true only)
+ *   file_field_report(...)         → local outbox always; mesh_events when it exists
  *
- * Zero LLM on this path (D-4 / Rule 3). Every query is DESCRIBE-checked
- * against tools/contract.ts and fails closed — "not available" — if a view or
- * column is missing. No fake rows, ever.
+ * Zero LLM on this path (D-4 / Rule 3) except the optional extraction inside
+ * file_field_report, which never gates storage. Every query is DESCRIBE-checked
+ * and fails closed — "not available" — if a view or column is missing. No fake rows.
  *
- * Restricted fields (casualty_count, exact_location, urgency_tier, rescue_location)
- * are stripped unconditionally: CORE's access_roles gate doesn't exist yet, so
- * there is no way to prove a caller is a verified responder.
+ * Restricted data (extracted_people, status 'casualties') is never emitted:
+ * CORE's access_roles gate has no caller identity wired yet, so every viewer
+ * is treated as aggregate_only.
  *
- * Env: PORT (default 3311), CLICKHOUSE_URL/USER/PASSWORD/DB, DATABASE_URL (Postgres).
+ * Env: PORT (default 3311), CLICKHOUSE_URL/USER/PASSWORD/DB, DATABASE_URL,
+ *      BRIDGE_PUBKEY_HEX (this node's 32-byte identity for mesh_events.bridge_pubkey), OUTBOX_PATH.
  */
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
@@ -33,17 +35,19 @@ const PORT = Number(process.env.PORT ?? 3311);
 
 // ---------- availability checks (fail closed) ----------
 
-async function chViewReady(cfg: ChConfig | null, view: ChView): Promise<{ ok: true; cfg: ChConfig } | { ok: false; why: string }> {
+async function chViewsReady(cfg: ChConfig | null, views: ChView[]): Promise<{ ok: true; cfg: ChConfig } | { ok: false; why: string }> {
   if (!cfg) return { ok: false, why: "CLICKHOUSE_URL is not set on the tool server." };
-  let cols: string[] | null;
-  try {
-    cols = await chColumns(cfg, view);
-  } catch (e) {
-    return { ok: false, why: `ClickHouse unreachable: ${(e as Error).message}` };
+  for (const view of views) {
+    let cols: string[] | null;
+    try {
+      cols = await chColumns(cfg, view);
+    } catch (e) {
+      return { ok: false, why: `ClickHouse unreachable: ${(e as Error).message}` };
+    }
+    if (!cols) return { ok: false, why: `ClickHouse object ${cfg.db}.${view} does not exist yet (CORE dependency, §5).` };
+    const missing = CONTRACT.clickhouse[view].filter((c) => !cols!.includes(c));
+    if (missing.length) return { ok: false, why: `${view} exists but lacks contract columns [${missing.join(", ")}] (tools/contract.ts).` };
   }
-  if (!cols) return { ok: false, why: `ClickHouse view ${cfg.db}.${view} does not exist yet (CORE dependency, §5).` };
-  const missing = CONTRACT.clickhouse[view].filter((c) => !cols!.includes(c));
-  if (missing.length) return { ok: false, why: `${view} exists but lacks contract columns [${missing.join(", ")}] (tools/contract.ts).` };
   return { ok: true, cfg };
 }
 
@@ -75,44 +79,53 @@ const text = (t: string) => ({ content: [{ type: "text" as const, text: guardToo
 
 // ---------- tools ----------
 
-function buildServer(): McpServer {
-  const server = new McpServer({ name: "darkspot-coordinator-tools", version: "0.1.0" });
+export function buildServer(): McpServer {
+  const server = new McpServer({ name: "darkspot-coordinator-tools", version: "0.2.0" });
 
   server.registerTool(
     "get_priority_ranking",
     {
       title: "Priority ranking (silence x population x hazard)",
       description:
-        "Evidence only: settlements in a region ranked by silence duration x population x hazard exposure, from ClickHouse mv_priority_rank. " +
-        "Cites rows and quotes raw report text verbatim. Never a recommendation of where to go.",
-      inputSchema: { region: z.string().min(1).describe("Region / admin-unit name or disaster_event_id"), limit: z.number().int().min(1).max(50).default(10) },
+        "Evidence only: settlements ranked by silence_hours x population x hazard_weight from CORE's ClickHouse priority_rank view, with corroboration tier, staleness and verbatim raw reports. " +
+        "region = disaster_events.id, a substring of the event's region label, or a settlement name. Never a recommendation of where to go.",
+      inputSchema: { region: z.string().min(1).describe("disaster_events.id (UUID), event region text, or settlement name"), limit: z.number().int().min(1).max(50).default(10) },
     },
     async ({ region, limit }) => {
       const cfg = chConfigFromEnv();
-      const ready = await chViewReady(cfg, "mv_priority_rank");
+      const ready = await chViewsReady(cfg, ["priority_rank", "corroboration", "staleness", "mesh_events", "pg_disaster_events"]);
       if (!ready.ok) return text(notAvailable("Priority ranking", ready.why));
       const rows = await chQuery<RankRow>(
         ready.cfg,
-        `SELECT p.settlement_geohash, p.settlement_name, p.rank, p.silence_hours, p.population, p.hazard_exposure,
-                c.confidence_tier, s.is_stale, s.last_confirmation_at
-         FROM mv_priority_rank p
-         LEFT JOIN mv_corroboration c ON c.settlement_geohash = p.settlement_geohash AND c.disaster_event_id = p.disaster_event_id
-         LEFT JOIN mv_staleness s ON s.settlement_geohash = p.settlement_geohash AND s.disaster_event_id = p.disaster_event_id
-         WHERE p.disaster_event_id = {region:String} OR p.settlement_name ILIKE concat('%', {region:String}, '%')
+        `SELECT p.settlement_pcode AS settlement_pcode, p.settlement_name AS settlement_name, p.rank AS rank, p.silence_hours AS silence_hours, p.never_heard AS never_heard, p.report_count AS report_count,
+                toString(p.last_report_at) AS last_report_at, p.population_used AS population_used, p.population_basis AS population_basis, p.hazard_exposure AS hazard_exposure, p.hazard_unknown AS hazard_unknown,
+                c.corroboration AS corroboration, s.is_stale AS is_stale, s.effective_status AS effective_status, s.window_hours AS window_hours
+         FROM priority_rank p
+         INNER JOIN pg_disaster_events e ON e.id = p.disaster_event_id
+         LEFT JOIN (
+           SELECT disaster_event_id, settlement_pcode,
+                  groupArray(map('extracted_status', extracted_status, 'confidence_tier', confidence_tier, 'distinct_devices', toString(distinct_devices))) AS corroboration
+           FROM corroboration GROUP BY disaster_event_id, settlement_pcode
+         ) c ON c.disaster_event_id = p.disaster_event_id AND c.settlement_pcode = p.settlement_pcode
+         LEFT JOIN staleness s ON s.disaster_event_id = p.disaster_event_id AND s.settlement_pcode = p.settlement_pcode
+         WHERE toString(p.disaster_event_id) = {region:String}
+            OR positionCaseInsensitive(e.region, {region:String}) > 0
+            OR positionCaseInsensitive(p.settlement_name, {region:String}) > 0
          ORDER BY p.rank ASC LIMIT {limit:UInt32}`,
         { region, limit },
       );
-      // raw report text next to every extracted field
-      if (rows.length && (await chViewReady(cfg, "mesh_events")).ok) {
-        for (const r of rows) {
-          r.raw_reports = await chQuery<{ id: string; raw_text: string }>(
+      for (const r of rows) {
+        // groupArray(map) arrives as array of string maps; normalise
+        r.corroboration = ((r.corroboration as any[]) ?? []).map((m: any) => ({ extracted_status: m.extracted_status, confidence_tier: m.confidence_tier, distinct_devices: Number(m.distinct_devices) }));
+        if (Number(r.report_count) > 0) {
+          r.raw_reports = await chQuery(
             ready.cfg,
-            "SELECT id, raw_text FROM mesh_events WHERE settlement_geohash = {g:String} ORDER BY received_at DESC LIMIT 3",
-            { g: r.settlement_geohash },
+            "SELECT toString(id) AS id, toString(received_at) AS received_at, extracted_status, raw_text FROM mesh_events WHERE settlement_pcode = {pc:String} ORDER BY received_at DESC LIMIT 3",
+            { pc: r.settlement_pcode },
           );
         }
       }
-      return text(formatPriorityRanking(region, rows, `${ready.cfg.db}.mv_priority_rank`));
+      return text(formatPriorityRanking(region, rows, `${ready.cfg.db}.priority_rank`));
     },
   );
 
@@ -120,23 +133,24 @@ function buildServer(): McpServer {
     "get_conflicts",
     {
       title: "Conflicting reports for a settlement",
-      description: "Evidence only: disagreeing reports for a settlement from ClickHouse mv_conflicts, shown side by side with raw text. Nothing is resolved.",
-      inputSchema: { settlement: z.string().min(1).describe("Settlement name or geohash") },
+      description: "Evidence only: settlements where distinct devices reported different statuses inside the staleness window (CORE's ClickHouse conflicts view), shown side by side with raw text. Nothing is resolved.",
+      inputSchema: { settlement: z.string().min(1).describe("Settlement P-code or name (substring)") },
     },
     async ({ settlement }) => {
       const cfg = chConfigFromEnv();
-      const ready = await chViewReady(cfg, "mv_conflicts");
+      const ready = await chViewsReady(cfg, ["conflicts", "pg_admin_units"]);
       if (!ready.ok) return text(notAvailable("Conflicts", ready.why));
       const rows = await chQuery<ConflictRow>(
         ready.cfg,
-        `SELECT c.settlement_geohash, c.field, c.value_a, c.event_id_a, a.raw_text AS raw_a, c.value_b, c.event_id_b, b.raw_text AS raw_b
-         FROM mv_conflicts c
-         LEFT JOIN mesh_events a ON a.id = c.event_id_a
-         LEFT JOIN mesh_events b ON b.id = c.event_id_b
-         WHERE c.settlement_geohash = {s:String} LIMIT 50`,
+        `SELECT c.settlement_pcode, any(au.name) AS settlement_name, any(c.distinct_statuses) AS distinct_statuses, any(c.distinct_devices) AS distinct_devices,
+                any(arrayMap(x -> (x.1, x.2, toString(x.3), x.4, toString(x.5)), c.reports_side_by_side)) AS reports_side_by_side
+         FROM conflicts c
+         LEFT JOIN pg_admin_units au ON au.pcode = c.settlement_pcode
+         WHERE c.settlement_pcode = {s:String} OR positionCaseInsensitive(au.name, {s:String}) > 0
+         GROUP BY c.settlement_pcode LIMIT 50`,
         { s: settlement },
       );
-      return text(formatConflicts(settlement, rows, `${ready.cfg.db}.mv_conflicts`));
+      return text(formatConflicts(settlement, rows, `${ready.cfg.db}.conflicts`));
     },
   );
 
@@ -145,7 +159,7 @@ function buildServer(): McpServer {
     {
       title: "Simulated relay/ferry route plan",
       description:
-        "SIMULATION ONLY. Returns rows from drone_routes_simulated (is_simulation = true). No drone is flying; nothing here is deconflicted with an airspace authority.",
+        "SIMULATION ONLY. Returns rows from Postgres drone_routes_simulated for the given fleet size (is_simulation = true, enforced by CHECK). No drone is flying; nothing here is deconflicted with an airspace authority.",
       inputSchema: { fleet_size: z.number().int().min(1).max(100).describe("Number of simulated relay units") },
     },
     async ({ fleet_size }) => {
@@ -153,7 +167,7 @@ function buildServer(): McpServer {
       if (!ready.ok) return text(notAvailable("Simulated route plan", ready.why));
       try {
         const r = await ready.client.query(
-          "SELECT id, is_simulation, waypoints, relay_positions, created_at FROM drone_routes_simulated WHERE is_simulation = true ORDER BY created_at DESC LIMIT $1",
+          "SELECT id, is_simulation, algorithm, fleet_size, waypoints, computed_at FROM drone_routes_simulated WHERE is_simulation = true AND fleet_size = $1 ORDER BY computed_at DESC LIMIT 10",
           [fleet_size],
         );
         return text(formatRoutePlan(fleet_size, r.rows as RouteRow[], "postgres.drone_routes_simulated"));
@@ -168,29 +182,31 @@ function buildServer(): McpServer {
     {
       title: "File a field report (volunteer)",
       description:
-        "Files a typed field report. Raw text is always kept verbatim (local outbox; mesh_events when it exists). " +
-        "Structured extraction runs via inference.net when configured, otherwise the report is stored unextracted and marked unverified. " +
-        "Nothing is inferred. Restricted extracted fields are not echoed back.",
+        "Files a typed field report. Raw text is always kept verbatim (local outbox; CORE's mesh_events when reachable). " +
+        "Extraction (safe / needs_help / casualties / unknown) runs via inference.net when configured, otherwise the report is stored as 'unextracted' and marked unverified. " +
+        "Nothing is inferred. Restricted extracted values are not echoed back.",
       inputSchema: {
         raw_text: z.string().min(1).max(4000).describe("The report exactly as typed by the volunteer"),
-        disaster_event_id: z.string().min(1).describe("Active disaster_events.id"),
-        device_pubkey: z.string().min(1).describe("Reporting device identity (bitchat Noise pubkey) or volunteer id"),
-        settlement_geohash: z.string().optional().describe("Settlement geohash if known"),
+        disaster_event_id: z.string().min(1).describe("disaster_events.id (UUID)"),
+        device_pubkey_hex: z.string().min(1).describe("Reporting device's 32-byte Noise static key as 64 hex chars"),
+        settlement_pcode: z.string().optional().describe("HDX COD P-code of the settlement, if known"),
+        settlement_geohash: z.string().optional().describe("Settlement geohash, if known"),
       },
     },
-    async ({ raw_text, disaster_event_id, device_pubkey, settlement_geohash }) => {
+    async ({ raw_text, disaster_event_id, device_pubkey_hex, settlement_pcode, settlement_geohash }) => {
       const extraction = await extractReport(raw_text, extractOptionsFromEnv());
-      const report = newReport({ disaster_event_id, device_pubkey, raw_text, settlement_geohash }, extraction);
-      const outcome = await storeReport(report, process.env.OUTBOX_PATH ?? "data/outbox.jsonl", chConfigFromEnv());
+      const report = newReport({ disaster_event_id, device_pubkey_hex, raw_text, settlement_pcode, settlement_geohash }, extraction);
+      const outcome = await storeReport(report, process.env.OUTBOX_PATH ?? "data/outbox.jsonl", chConfigFromEnv(), process.env.BRIDGE_PUBKEY_HEX);
       const pub = publicFields(extraction.fields);
       const lines = [
         `Report filed, id=${report.id} (received ${report.received_at}).`,
         `Raw text (verbatim, never discarded):`,
         blockquote(raw_text),
         `Storage: local outbox ${outcome.outbox}; mesh_events: ${outcome.mesh_events} — ${outcome.detail}`,
-        `Extraction: ${extraction.status}${extraction.provider ? " via " + extraction.provider : ""} — ${extraction.note}`,
+        `Extraction: ${extraction.status}${extraction.model ? " via " + extraction.model : ""} — ${extraction.note}`,
       ];
-      if (pub) lines.push(`Extracted (non-restricted fields only, check against the raw text above): ${JSON.stringify(pub)}`);
+      if (pub) lines.push(`Extracted (non-restricted values only; check against the raw text above): ${JSON.stringify(pub)}`);
+      if (!settlement_pcode) lines.push("No settlement_pcode given: this report is stored but cannot contribute to silence/priority views until a P-code is attached.");
       lines.push("Confidence tier for this single report: unverified-single-source.");
       return text(lines.join("\n"));
     },
@@ -204,7 +220,7 @@ function buildServer(): McpServer {
 const http = createServer(async (req, res) => {
   if (req.url === "/healthz") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clickhouse: Boolean(process.env.CLICKHOUSE_URL), postgres: Boolean(process.env.DATABASE_URL) }));
+    res.end(JSON.stringify({ ok: true, clickhouse: Boolean(process.env.CLICKHOUSE_URL), postgres: Boolean(process.env.DATABASE_URL), bridge_identity: Boolean(process.env.BRIDGE_PUBKEY_HEX) }));
     return;
   }
   if (!req.url?.startsWith("/mcp")) {
@@ -225,5 +241,5 @@ const http = createServer(async (req, res) => {
 http.listen(PORT, () => {
   const port = (http.address() as { port: number }).port;
   console.log(`[darkspot-tools] MCP on http://0.0.0.0:${port}/mcp  (instance ${randomUUID().slice(0, 8)})`);
-  console.log(`[darkspot-tools] clickhouse=${process.env.CLICKHOUSE_URL ?? "unset"} postgres=${process.env.DATABASE_URL ? "set" : "unset"}`);
+  console.log(`[darkspot-tools] clickhouse=${process.env.CLICKHOUSE_URL ?? "unset"} postgres=${process.env.DATABASE_URL ? "set" : "unset"} bridge_identity=${process.env.BRIDGE_PUBKEY_HEX ? "set" : "unset"}`);
 });

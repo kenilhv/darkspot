@@ -1,27 +1,39 @@
 /**
- * Column contract the coordinator tools expect from CORE's schema (§2).
- * This is the concrete ask to CORE (§5). Tools DESCRIBE each view at call
- * time and fail closed if a required column is missing — they never
+ * Column contract the coordinator tools rely on — taken from CORE's actual DDL
+ * (`git show agent/core:db/clickhouse/001_mesh_events.sql`, `003_views.sql`,
+ * `db/postgres/001_schema.sql`), not from §2's prose. Tools DESCRIBE each object
+ * at call time and fail closed if a required column is missing — they never
  * substitute or guess a column.
  *
- * Restricted fields (§1a Rule 2 / CHAT hard rule): never emitted to a viewer
- * until CORE's access_roles gate exists AND the caller is a verified responder.
- * Until then every tool runs in aggregate-only mode unconditionally.
+ * Note CORE's naming: the *materialized* views are mv_* (write side); the
+ * readable views are `priority_rank`, `conflicts`, `corroboration`, `staleness`.
+ *
+ * Restricted data (§1a Rule 2 / CHAT hard rule): casualty counts, exact rescue
+ * locations, urgency tiers. In CORE's schema that is `mesh_events.extracted_people`
+ * (a headcount; when paired with status 'casualties' it IS a casualty count) and
+ * the `extracted_status = 'casualties'` value itself. Until an access_roles check
+ * exists AND the caller is a verified responder, every tool runs aggregate-only:
+ * `extracted_people` is never emitted and 'casualties' is rendered as a
+ * restricted marker, never as a number.
  */
-export const RESTRICTED_FIELDS = ["casualty_count", "exact_location", "urgency_tier", "rescue_location"] as const;
+export const RESTRICTED_COLUMNS = ["extracted_people", "casualty_count", "exact_location", "urgency_tier", "rescue_location"] as const;
+export const RESTRICTED_STATUS = "casualties";
+export const RESTRICTED_STATUS_LABEL = "restricted (casualty-related; visible only via a signed-off escalation)";
 
 export const CONTRACT = {
   clickhouse: {
-    mesh_events: ["id", "disaster_event_id", "device_pubkey", "raw_text", "received_at", "settlement_geohash"],
-    mv_priority_rank: ["disaster_event_id", "settlement_geohash", "settlement_name", "rank", "silence_hours", "population", "hazard_exposure"],
-    mv_conflicts: ["disaster_event_id", "settlement_geohash", "field", "value_a", "event_id_a", "value_b", "event_id_b"],
-    mv_corroboration: ["disaster_event_id", "settlement_geohash", "distinct_devices", "confidence_tier"],
-    mv_staleness: ["disaster_event_id", "settlement_geohash", "is_stale", "last_confirmation_at"],
+    mesh_events: ["id", "disaster_event_id", "device_pubkey", "bridge_pubkey", "hop_count", "reported_at", "received_at", "settlement_pcode", "settlement_geohash", "raw_text", "extracted_status", "extracted_people", "extraction_model", "extraction_confidence"],
+    priority_rank: ["disaster_event_id", "settlement_pcode", "settlement_name", "never_heard", "report_count", "last_report_at", "silence_hours", "population_used", "population_basis", "hazard_exposure", "hazard_unknown", "rank"],
+    corroboration: ["disaster_event_id", "settlement_pcode", "extracted_status", "distinct_devices", "message_count", "confidence_tier"],
+    staleness: ["disaster_event_id", "settlement_pcode", "latest_status", "latest_mesh_event_id", "latest_at", "window_hours", "is_stale", "effective_status"],
+    conflicts: ["disaster_event_id", "settlement_pcode", "distinct_statuses", "distinct_devices", "reports_side_by_side"],
+    pg_disaster_events: ["id", "region", "activation_date"],
+    pg_admin_units: ["pcode", "name", "country_iso3"],
   },
   postgres: {
-    drone_routes_simulated: ["id", "disaster_event_id", "is_simulation", "waypoints", "relay_positions", "created_at"],
-    access_roles: ["id", "principal", "role"],
-    escalations: ["id", "authorized_by"],
+    drone_routes_simulated: ["id", "disaster_event_id", "is_simulation", "algorithm", "fleet_size", "waypoints", "computed_at"],
+    access_roles: ["id", "disaster_event_id", "principal", "level"],
+    escalations: ["id", "authorized_by", "kind"],
   },
 } as const;
 
