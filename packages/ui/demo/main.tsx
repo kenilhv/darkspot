@@ -61,4 +61,9 @@ function Demo() {
   );
 }
 const page = new URLSearchParams(location.search).get('page');
-createRoot(document.getElementById('root')!).render(page === 'sim' ? <SimDemo /> : page === 'coordinator' ? <CoordinatorDemo /> : <Demo />);
+// The coordinator view is the product surface, so it is what a bare URL shows — the component
+// gallery is a development tool and moves behind ?page=components. (Previously the gallery was
+// the default, which meant the first URL anyone tried opened the least representative page.)
+createRoot(document.getElementById('root')!).render(
+  page === 'sim' ? <SimDemo /> : page === 'components' ? <Demo /> : <CoordinatorDemo />,
+);
