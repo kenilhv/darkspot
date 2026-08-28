@@ -4,6 +4,8 @@ import '../src/tokens.css';
 import '../src/components.css';
 import { SimDemo } from './sim';
 import { CoordinatorDemo } from './coordinator';
+import { installOverflowProbe } from './overflow-probe';
+installOverflowProbe();
 import { SettlementCard, RawReport } from '../src';
 import { ConfidenceTierBadge, SimulationLabel, StaleMarker, SilenceSwatch, SilenceLegend, silenceStep, confidenceTiers } from '../src';
 
