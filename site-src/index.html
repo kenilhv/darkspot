@@ -65,22 +65,21 @@
     </li>
 
     <li class="card">
-      <span class="card__tag">needs a running stack</span>
-      <h3>Grounded chat <span class="card__host">LibreChat</span></h3>
+      <span class="card__tag card__tag--live">live model</span>
+      <h3><a href="http://localhost:3080" target="_blank" rel="noopener">Grounded chat</a> <span class="card__host">LibreChat</span></h3>
       <p>
         A coordinator asks in plain language; the answer comes back as cited rows from ClickHouse,
         never as a command. A deterministic guard sits between the model and the user and blocks
         any imperative before it is ever shown — enforced in a proxy, not hoped for in a prompt.
       </p>
       <p class="card__meta">
-        Runs at <span class="mono">localhost:3080</span> against the local stack.
-        <a href="https://github.com/kenilhv/darkspot#librechat">How it is wired →</a>
+        Local stack · <span class="mono">localhost:3080</span> · ask about <em>Trishuli</em>
       </p>
     </li>
 
     <li class="card">
       <span class="card__tag card__tag--live">live data</span>
-      <h3>ClickHouse + Postgres <span class="card__host">OLAP + OLTP</span></h3>
+      <h3><a href="https://console.clickhouse.cloud" target="_blank" rel="noopener">ClickHouse + Postgres</a> <span class="card__host">OLAP + OLTP</span></h3>
       <p>
         Postgres holds canonical state and every human decision. ClickHouse reads it live over a
         cross-database bridge and recomputes the silence ranking on each query — the elapsed
