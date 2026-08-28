@@ -41,3 +41,26 @@ test("tool server boots and exposes exactly the four contract tools; all fail cl
     child.kill();
   }
 });
+
+test("numeric args arriving as strings (as Llama-3.3 emits them via the proxy) are coerced, not rejected", async () => {
+  const child = spawn(process.execPath, [join(here, "server.ts")], { env: { ...process.env, PORT: "0", CLICKHOUSE_URL: "", DATABASE_URL: "" } });
+  const port = await new Promise<number>((resolve, reject) => {
+    let out = "";
+    child.stdout.on("data", (d) => { out += d; const m = out.match(/:(\d+)\/mcp/); if (m) resolve(Number(m[1])); });
+    child.stderr.on("data", (d) => (out += d));
+    child.on("exit", (code) => reject(new Error(`server exited ${code}: ${out}`)));
+  });
+  try {
+    const c = new Client({ name: "test", version: "0" });
+    await c.connect(new StreamableHTTPClientTransport(new URL(`http://localhost:${port}/mcp`)));
+    const a: any = await c.callTool({ name: "get_priority_ranking", arguments: { region: "x", limit: "12" } });
+    assert.notEqual(a.isError, true);
+    assert.match(a.content[0].text, /not available/);
+    const b: any = await c.callTool({ name: "get_route_plan", arguments: { fleet_size: "3" } });
+    assert.notEqual(b.isError, true);
+    assert.match(b.content[0].text, /simulat/i);
+    await c.close();
+  } finally {
+    child.kill();
+  }
+});

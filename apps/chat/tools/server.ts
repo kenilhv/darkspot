@@ -113,7 +113,8 @@ export function buildServer(viewer: Viewer = { subject: null, trusted: true }): 
       description:
         "Evidence only: settlements ranked by silence_hours x population x hazard_weight from CORE's ClickHouse priority_rank view, with corroboration tier, staleness and verbatim raw reports. " +
         "region = disaster_events.id, a substring of the event's region label, or a settlement name. Never a recommendation of where to go.",
-      inputSchema: { region: z.string().min(1).describe("disaster_events.id (UUID), event region text, or settlement name"), limit: z.number().int().min(1).max(50).default(10) },
+      // z.coerce: Llama-3.3 via the proxy emits numeric args as strings ("12"); observed live 15:5x, would reject the first demo tool call otherwise
+      inputSchema: { region: z.string().min(1).describe("disaster_events.id (UUID), event region text, or settlement name"), limit: z.coerce.number().int().min(1).max(50).default(10) },
     },
     tracer.wrap("tool", "get_priority_ranking", async ({ region, limit }) => {
       const cfg = chConfigFromEnv();
@@ -196,7 +197,7 @@ export function buildServer(viewer: Viewer = { subject: null, trusted: true }): 
       title: "Simulated relay/ferry route plan",
       description:
         "SIMULATION ONLY. Returns rows from Postgres drone_routes_simulated for the given fleet size (is_simulation = true, enforced by CHECK). No drone is flying; nothing here is deconflicted with an airspace authority.",
-      inputSchema: { fleet_size: z.number().int().min(1).max(100).describe("Number of simulated relay units") },
+      inputSchema: { fleet_size: z.coerce.number().int().min(1).max(100).describe("Number of simulated relay units") },
     },
     tracer.wrap("tool", "get_route_plan", async ({ fleet_size }) => {
       const ready = await pgTableReady("drone_routes_simulated");

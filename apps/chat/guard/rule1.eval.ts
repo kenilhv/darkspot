@@ -67,18 +67,20 @@ async function callModel(prompt: string): Promise<{ provider: string; text: stri
     const r = await fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${infKey}` },
+      signal: AbortSignal.timeout(120_000),
       body: JSON.stringify({
         model,
         temperature: 0,
+        max_tokens: 700,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: prompt },
         ],
       }),
     });
-    if (!r.ok) throw new Error(`inference.net ${r.status}: ${await r.text()}`);
+    if (!r.ok) throw new Error(`upstream ${r.status}: ${await r.text()}`);
     const j: any = await r.json();
-    return { provider: `inference.net/${model}`, text: j.choices?.[0]?.message?.content ?? "" };
+    return { provider: `${new URL(base).host}/${model}`, text: j.choices?.[0]?.message?.content ?? "" };
   }
   if (antKey) {
     const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
