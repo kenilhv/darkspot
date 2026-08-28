@@ -7,7 +7,12 @@
 
 -- ===========================================================================
 -- mv_corroboration — counts DISTINCT DEVICE IDENTITIES, never message count.
--- One phone re-sending the same thing 50 times is still one source.
+-- One phone re-sending the same thing 50 times is still one source. That closes
+-- the REPLAY gap only: bitchat identities are free Noise keypairs, so one attacker
+-- can mint many pubkeys (Sybil). Sybil resistance comes from devices.trust, which
+-- humans set — so the view also counts distinct devices at trust >= 'vouched'
+-- (RESEARCH review pass #1, finding 2). The device SET is kept (not just a
+-- cardinality) because trust can be granted after a report has landed.
 -- ===========================================================================
 CREATE TABLE IF NOT EXISTS darkspot.corroboration_state
 (
@@ -15,6 +20,7 @@ CREATE TABLE IF NOT EXISTS darkspot.corroboration_state
     settlement_pcode   LowCardinality(String),
     extracted_status   LowCardinality(String),
     distinct_devices   AggregateFunction(uniqExact, FixedString(32)),
+    device_set         AggregateFunction(groupUniqArray, FixedString(32)),
     message_count      AggregateFunction(count, UInt64),
     first_seen         AggregateFunction(min, DateTime64(3, 'UTC')),
     last_seen          AggregateFunction(max, DateTime64(3, 'UTC'))
@@ -28,6 +34,7 @@ TO darkspot.corroboration_state
 AS SELECT
     disaster_event_id, settlement_pcode, extracted_status,
     uniqExactState(device_pubkey) AS distinct_devices,
+    groupUniqArrayState(device_pubkey) AS device_set,
     countState()                  AS message_count,
     minState(received_at)         AS first_seen,
     maxState(received_at)         AS last_seen
@@ -36,7 +43,13 @@ GROUP BY disaster_event_id, settlement_pcode, extracted_status;
 
 -- Confidence tiers surfaced explicitly, never collapsed into one number.
 CREATE VIEW IF NOT EXISTS darkspot.corroboration AS
-WITH human AS (
+WITH
+trusted AS (
+    -- devices a named human has vouched for / registered as responders (Postgres bytea arrives as '\x<hex>')
+    SELECT groupArray(unhex(substring(pubkey, 3))) AS keys
+    FROM darkspot.pg_devices WHERE trust IN ('vouched', 'responder')
+),
+human AS (
     SELECT m.disaster_event_id AS disaster_event_id, m.settlement_pcode AS settlement_pcode,
            m.extracted_status AS extracted_status, count() AS confirmed_reviews
     FROM darkspot.pg_reports_human_review r
@@ -47,6 +60,8 @@ WITH human AS (
 SELECT
     s.disaster_event_id, s.settlement_pcode, s.extracted_status,
     uniqExactMerge(s.distinct_devices) AS distinct_devices,
+    length(arrayFilter(d -> has((SELECT keys FROM trusted), d), groupUniqArrayMerge(s.device_set))) AS distinct_trusted_devices,
+    distinct_trusted_devices >= 2      AS trusted_corroboration,   -- Sybil-resistant reading of 'corroborated'
     countMerge(s.message_count)        AS message_count,
     minMerge(s.first_seen)             AS first_seen,
     maxMerge(s.last_seen)              AS last_seen,

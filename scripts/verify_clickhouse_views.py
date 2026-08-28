@@ -9,6 +9,8 @@ Usage: python scripts/verify_clickhouse_views.py [disaster_event_id]   (defaults
 import os
 import sys
 import uuid
+
+import psycopg2
 from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -58,6 +60,9 @@ cols = ["id", "disaster_event_id", "device_pubkey", "bridge_pubkey", "hop_count"
 review_id = None
 try:
     client.insert("mesh_events", rows, column_names=cols)
+    with pg() as conn, conn.cursor() as cur:   # device 2 vouched by a named human; devices 1 and 3 unknown
+        cur.execute("INSERT INTO devices (pubkey, trust, trust_set_by, label) VALUES (%s, 'vouched', %s, %s)",
+                    (psycopg2.Binary(dev[1]), FIX + "human", FIX))
     with pg() as conn, conn.cursor() as cur:
         cur.execute("""INSERT INTO reports_human_review (disaster_event_id, mesh_event_id, reviewer, decision, note)
                        VALUES (%s, %s, %s, 'confirmed', %s) RETURNING id""", (ev, str(ids[1]), FIX + "reviewer", FIX))
@@ -76,10 +81,12 @@ try:
     check(n_never == total - 2, f"silence: every other in-scope unit still never_heard ({n_never}/{total})")
 
     # ---- corroboration (distinct devices, not messages)
-    r = client.query(f"SELECT extracted_status, distinct_devices, message_count, confidence_tier FROM corroboration "
+    r = client.query(f"SELECT extracted_status, distinct_devices, message_count, confidence_tier, distinct_trusted_devices, trusted_corroboration FROM corroboration "
                      f"WHERE disaster_event_id = '{ev}' AND settlement_pcode = '{s_a}' ORDER BY extracted_status").result_rows
     d = {x[0]: x for x in r}
     check(d["needs_help"][1] == 2 and d["needs_help"][2] == 3, "corroboration: needs_help = 2 distinct devices from 3 messages")
+    check(d["needs_help"][4] == 1 and d["needs_help"][5] == 0, "corroboration: only 1 of those devices is trusted -> trusted_corroboration = 0 (Sybil-aware)")
+    check(d["safe"][4] == 0, "corroboration: 'safe' from an unknown device has 0 trusted devices")
     check(d["needs_help"][3] == "human-verified", "corroboration: confirmed review lifts needs_help to human-verified")
     check(d["safe"][1] == 1 and d["safe"][3] == "unverified-single-source", "corroboration: safe = single source, tier unverified")
     r = client.query(f"SELECT confidence_tier FROM corroboration WHERE disaster_event_id = '{ev}' AND settlement_pcode = '{s_b}'").result_rows
@@ -111,9 +118,10 @@ finally:
     # ---- cleanup: no fixture survives
     for t in ("mesh_events", "silence_state", "corroboration_state", "staleness_state"):
         client.command(f"ALTER TABLE {t} DROP PARTITION '{ev}'")
-    if review_id:
-        with pg() as conn, conn.cursor() as cur:
+    with pg() as conn, conn.cursor() as cur:
+        if review_id:
             cur.execute("DELETE FROM reports_human_review WHERE id = %s", (review_id,))
+        cur.execute("DELETE FROM devices WHERE label = %s", (FIX,))
     left = client.query(f"SELECT count() FROM mesh_events WHERE disaster_event_id = '{ev}'").result_rows[0][0]
     check(left == 0, "cleanup: fixture partitions dropped")
 
