@@ -161,4 +161,5 @@ In priority order:
 ```
 <time> [MON] ...
 13:21 [CORE] armed in worktree ../darkspot-core (agent/core). docker-compose.yml up: Postgres 16 wal_level=logical on :5433, ClickHouse 25.3 on :8124/:9001 (offset so betterday stack can coexist). Next: Postgres schema §2.
+13:24 [CORE] Postgres schema db/postgres/001_schema.sql: all 9 §2 tables. Rule 2 (escalations.authorized_by NOT NULL + non-blank CHECK), Rule 4 (drone_routes_simulated CHECK is_simulation=true), PII-needs-grant, 32-byte pubkey — verified rejecting bad rows via scripts/verify_postgres_rules.sh (6/6 OK). Next: ClickHouse mesh_events + mv_silence_duration.
 ```

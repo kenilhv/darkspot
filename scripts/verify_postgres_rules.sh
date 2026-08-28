@@ -2,7 +2,7 @@
 # Verifies the §1a product-rule constraints in Postgres reject bad rows. Exit 0 only if every expected failure fails.
 # Usage: sh scripts/verify_postgres_rules.sh   (stack must be up: docker compose up -d --wait)
 set -e
-out=$(docker compose exec -T postgres psql -U darkspot -d darkspot -v ON_ERROR_STOP=0 <<'SQL'
+out=$(docker compose exec -T postgres psql -U darkspot -d darkspot -v ON_ERROR_STOP=0 2>&1 <<'SQL'
 BEGIN;
 INSERT INTO disaster_events (id,type,country_iso3,region,activation_date) VALUES ('00000000-0000-0000-0000-000000000001','glof','NPL','test','2026-08-26');
 INSERT INTO authorized_orgs (id,disaster_event_id,org_name,org_type,contact_name,contact_channel,registered_by) VALUES ('00000000-0000-0000-0000-00000000000a','00000000-0000-0000-0000-000000000001','Test Org','eoc','x','y','z');
