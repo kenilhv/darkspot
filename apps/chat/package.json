@@ -3,9 +3,16 @@
   "private": true,
   "type": "module",
   "description": "DarkSpot LibreChat integration: Rule 1 guard, coordinator tool server, field report intake.",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "node --test guard/*.test.ts",
     "eval:rule1": "node guard/rule1.eval.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "pg": "^8.23.0",
+    "zod": "^4.5.1"
   }
 }
