@@ -27,7 +27,7 @@ import { CONTRACT, type ChView } from "./contract.ts";
 import { chColumns, chConfigFromEnv, chQuery, type ChConfig } from "./clickhouse.ts";
 import { extractOptionsFromEnv, extractReport, publicFields } from "../intake/extract.ts";
 import { newReport, storeReport } from "../intake/store.ts";
-import { formatConflicts, formatPriorityRanking, formatRoutePlan, guardToolText, notAvailable, type ConflictRow, type RankRow, type RouteRow } from "./format.ts";
+import { blockquote, formatConflicts, formatPriorityRanking, formatRoutePlan, guardToolText, notAvailable, type ConflictRow, type RankRow, type RouteRow } from "./format.ts";
 
 const PORT = Number(process.env.PORT ?? 3311);
 
@@ -186,16 +186,13 @@ function buildServer(): McpServer {
       const lines = [
         `Report filed, id=${report.id} (received ${report.received_at}).`,
         `Raw text (verbatim, never discarded):`,
-        raw_text.split(/?
-/).map((l) => "> " + l).join("
-"),
+        blockquote(raw_text),
         `Storage: local outbox ${outcome.outbox}; mesh_events: ${outcome.mesh_events} — ${outcome.detail}`,
         `Extraction: ${extraction.status}${extraction.provider ? " via " + extraction.provider : ""} — ${extraction.note}`,
       ];
       if (pub) lines.push(`Extracted (non-restricted fields only, check against the raw text above): ${JSON.stringify(pub)}`);
       lines.push("Confidence tier for this single report: unverified-single-source.");
-      return text(lines.join("
-"));
+      return text(lines.join("\n"));
     },
   );
 
@@ -226,6 +223,7 @@ const http = createServer(async (req, res) => {
 });
 
 http.listen(PORT, () => {
-  console.log(`[darkspot-tools] MCP on http://0.0.0.0:${PORT}/mcp  (instance ${randomUUID().slice(0, 8)})`);
+  const port = (http.address() as { port: number }).port;
+  console.log(`[darkspot-tools] MCP on http://0.0.0.0:${port}/mcp  (instance ${randomUUID().slice(0, 8)})`);
   console.log(`[darkspot-tools] clickhouse=${process.env.CLICKHOUSE_URL ?? "unset"} postgres=${process.env.DATABASE_URL ? "set" : "unset"}`);
 });

@@ -18,6 +18,11 @@ endpoints:
       modelDisplayLabel: "DarkSpot"
       dropParams: ["stop", "user", "frequency_penalty", "presence_penalty"]
 
+# LibreChat blocks private hostnames for MCP unless listed here (mcpSettings.allowedAddresses).
+mcpSettings:
+  allowedAddresses:
+    - "darkspot-tools:3311"
+
 # Coordinator tools (apps/chat/tools) — evidence only, fail closed until CORE's views exist.
 mcpServers:
   darkspot:
