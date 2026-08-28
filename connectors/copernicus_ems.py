@@ -12,8 +12,10 @@ Scope = every finest-level admin unit whose PARENT unit (e.g. district) is touch
 extent. That is deliberately wider than the mapped water: the silence view needs the settlements nearby that
 may have gone quiet, not only the ones under water.
 
-Additional published extents (HOT, UNOSAT, ...) can be added with --extra-extent URL --extra-ref NAME; they are
-treated exactly like a Copernicus observed extent and cited per row.
+Additional published extents (HOT, UNOSAT, ...) can be added with --extra-extent URL --extra-ref NAME --extra-kind K
+--extra-org O --extra-licence L; they are treated exactly like a Copernicus observed extent and cited per row.
+Every 'high' row records observed_event_kind / source_org / source_licence so a coordinator sees
+"Landslide (Copernicus EMS)" vs "Flood extent (HOT, ODbL)", never one undifferentiated 'high'.
 
 Consuming an already-activated product is public. REQUESTING a new activation needs an authorized org (§2).
 
@@ -58,7 +60,7 @@ def discover_ems_vector_bundles(ems_ref: str) -> list[dict]:
 
 def _layers_from_bundle(zip_path: str) -> dict[str, list]:
     """-> {'observedEventA': [(product_ref, geom)], 'areaOfInterestA': [...]} from an EMS vectors zip."""
-    out: dict[str, list] = {"observedEventA": [], "areaOfInterestA": []}
+    out: dict[str, list] = {"observedEventA": [], "areaOfInterestA": []}   # values: (product_ref, geom, kind)
     with zipfile.ZipFile(zip_path) as z:
         for n in z.namelist():
             m = re.search(r"(EMS[RN]\d+_AOI\d+_\w+?_PRODUCT)_(observedEventA|areaOfInterestA)_v\d+\.json$", n)
@@ -69,7 +71,9 @@ def _layers_from_bundle(zip_path: str) -> dict[str, list]:
             if crs and "CRS84" not in crs and "4326" not in crs:
                 raise RuntimeError(f"{n}: unexpected CRS {crs}, refusing to reproject blindly")
             for f in data["features"]:
-                out[m.group(2)].append((m.group(1), shape(f["geometry"])))
+                pr = f.get("properties") or {}
+                kind = pr.get("obj_desc") or pr.get("event_type") or "observed event (kind not stated)"
+                out[m.group(2)].append((m.group(1), shape(f["geometry"]), kind))
     return out
 
 
@@ -97,7 +101,13 @@ def admin_polygons(iso3: str, level: int) -> dict[str, object]:
 
 
 # --------------------------------------------------------------------------- load
-def load_event(event_id: str, extra_extents: list[tuple[str, str]] = ()) -> dict:
+COPERNICUS_ORG = "Copernicus EMS"
+COPERNICUS_LICENCE = ("Copernicus EMS (c) European Union - products of non-sensitive activations freely available for public "
+                      "viewing and download; cite 'Copernicus Emergency Management Service (c) <year> European Union, <activation>'")
+
+
+def load_event(event_id: str, extra_extents: list[tuple[str, str, str, str, str]] = ()) -> dict:
+    """extra_extents: (url, product_ref, kind, org, licence)"""
     retrieved = datetime.now(timezone.utc)
     with pg() as conn, conn.cursor() as cur:
         cur.execute("SELECT country_iso3, copernicus_ems_ref FROM disaster_events WHERE id = %s", (event_id,))
@@ -112,16 +122,16 @@ def load_event(event_id: str, extra_extents: list[tuple[str, str]] = ()) -> dict
         cur.execute("SELECT id, pcode, parent_pcode FROM admin_units WHERE country_iso3 = %s AND granularity_level = %s", (iso3, level))
         units = {pcode: (uid, parent) for uid, pcode, parent in cur.fetchall()}
 
-    observed: list[tuple[str, str, object]] = []   # (product_ref, source_url, geom)
+    observed: list[tuple] = []   # (product_ref, source_url, geom, kind, org, licence)
     aois: list[object] = []
     if ems_ref:
         for b in discover_ems_vector_bundles(ems_ref):
             path = _cached_download(b["url"], re.sub(r"[^A-Za-z0-9_.-]", "_", b["name"]) + ".zip")
             layers = _layers_from_bundle(path)
-            observed += [(ref, b["url"], g) for ref, g in layers["observedEventA"]]
-            aois += [g for _, g in layers["areaOfInterestA"]]
-    for url, ref in extra_extents:
-        observed += [(ref, url, g) for g in _geojson_extent(url)]
+            observed += [(ref, b["url"], g, kind, COPERNICUS_ORG, COPERNICUS_LICENCE) for ref, g, kind in layers["observedEventA"]]
+            aois += [g for _, g, _ in layers["areaOfInterestA"]]
+    for url, ref, kind, org, licence in extra_extents:
+        observed += [(ref, url, g, kind, org, licence) for g in _geojson_extent(url)]
 
     if not observed and not aois:
         raise RuntimeError("no extents found; nothing to scope")
@@ -131,13 +141,13 @@ def load_event(event_id: str, extra_extents: list[tuple[str, str]] = ()) -> dict
     tree = STRtree([polys[p] for p in pcodes])
 
     touched_units: set[str] = set()
-    for g in aois + [g for _, _, g in observed]:
+    for g in aois + [o[2] for o in observed]:
         for i in tree.query(g, predicate="intersects"):
             touched_units.add(pcodes[i])
     touched_parents = {units[p][1] for p in touched_units}
     scope = [p for p in pcodes if units[p][1] in touched_parents]
 
-    observed_union = unary_union([g for _, _, g in observed]) if observed else None
+    observed_union = unary_union([o[2] for o in observed]) if observed else None
     stats = {"event": event_id, "iso3": iso3, "ems_ref": ems_ref, "admin_level": level,
              "observed_polygons": len(observed), "aoi_polygons": len(aois),
              "touched_parents": sorted(touched_parents), "scope_units": len(scope), "high": 0, "unknown": 0}
@@ -145,18 +155,29 @@ def load_event(event_id: str, extra_extents: list[tuple[str, str]] = ()) -> dict
         for p in scope:
             hit = None
             if observed_union is not None and polys[p].intersects(observed_union):
-                hit = next((ref, url) for ref, url, g in observed if polys[p].intersects(g))
+                hits = [o for o in observed if polys[p].intersects(o[2])]
+                # several products may touch one unit: keep every kind visible, cite the first product
+                hit = (hits[0][0], hits[0][1], " + ".join(sorted({o[3] for o in hits})),
+                       " + ".join(sorted({o[4] for o in hits})), " | ".join(sorted({o[5] for o in hits})))
             lvl = "high" if hit else "unknown"
             stats[lvl] += 1
+            if hit:
+                stats.setdefault("kinds", {}).setdefault(hit[2], 0)
+                stats["kinds"][hit[2]] += 1
             cur.execute(
-                """INSERT INTO hazard_exposure (disaster_event_id, admin_unit_id, level, ems_product_ref, source_url, source_retrieved)
-                   VALUES (%s,%s,%s,%s,%s,%s)
+                """INSERT INTO hazard_exposure (disaster_event_id, admin_unit_id, level, ems_product_ref, source_url, source_retrieved,
+                                                observed_event_kind, source_org, source_licence)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (disaster_event_id, admin_unit_id) DO UPDATE SET
                      level = CASE WHEN EXCLUDED.level = 'high' OR hazard_exposure.level = 'unknown' THEN EXCLUDED.level ELSE hazard_exposure.level END,
                      ems_product_ref = COALESCE(EXCLUDED.ems_product_ref, hazard_exposure.ems_product_ref),
                      source_url      = COALESCE(EXCLUDED.source_url, hazard_exposure.source_url),
-                     source_retrieved = COALESCE(EXCLUDED.source_retrieved, hazard_exposure.source_retrieved)""",
-                (event_id, units[p][0], lvl, hit[0] if hit else None, hit[1] if hit else None, retrieved if hit else None),
+                     source_retrieved = COALESCE(EXCLUDED.source_retrieved, hazard_exposure.source_retrieved),
+                     observed_event_kind = COALESCE(EXCLUDED.observed_event_kind, hazard_exposure.observed_event_kind),
+                     source_org      = COALESCE(EXCLUDED.source_org, hazard_exposure.source_org),
+                     source_licence  = COALESCE(EXCLUDED.source_licence, hazard_exposure.source_licence)""",
+                (event_id, units[p][0], lvl, hit[0] if hit else None, hit[1] if hit else None, retrieved if hit else None,
+                 hit[2] if hit else None, hit[3] if hit else None, hit[4] if hit else None),
             )
     return stats
 
@@ -166,7 +187,11 @@ if __name__ == "__main__":
     ap.add_argument("--event", required=True)
     ap.add_argument("--extra-extent", action="append", default=[], help="GeoJSON URL of another published observed extent")
     ap.add_argument("--extra-ref", action="append", default=[], help="product reference to cite for the matching --extra-extent")
+    ap.add_argument("--extra-kind", action="append", default=[], help="what the extent is, as the publisher states it (e.g. 'Flood extent')")
+    ap.add_argument("--extra-org", action="append", default=[], help="publisher (e.g. 'HOT')")
+    ap.add_argument("--extra-licence", action="append", default=[], help="licence as published (e.g. 'ODbL')")
     a = ap.parse_args()
-    if len(a.extra_extent) != len(a.extra_ref):
-        raise SystemExit("--extra-extent and --extra-ref must be paired")
-    print(json.dumps(load_event(a.event, list(zip(a.extra_extent, a.extra_ref))), indent=2))
+    n = len(a.extra_extent)
+    if not (len(a.extra_ref) == len(a.extra_kind) == len(a.extra_org) == len(a.extra_licence) == n):
+        raise SystemExit("--extra-extent/--extra-ref/--extra-kind/--extra-org/--extra-licence must all be given once per extent")
+    print(json.dumps(load_event(a.event, list(zip(a.extra_extent, a.extra_ref, a.extra_kind, a.extra_org, a.extra_licence))), indent=2))

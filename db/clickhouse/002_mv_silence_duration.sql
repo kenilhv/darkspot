@@ -61,6 +61,9 @@ SELECT
     au.granularity_level                   AS granularity_level,
     au.population                          AS population,
     h.level                                AS hazard_exposure,
+    h.observed_event_kind                  AS hazard_kind,        -- e.g. 'Landslide', 'Flood extent', 'Flood extent + Landslide'
+    h.source_org                           AS hazard_source_org,  -- e.g. 'Copernicus EMS', 'HOT'
+    h.source_licence                       AS hazard_source_licence,
     toDateTime64(e.activation_date, 3, 'UTC') AS activation_at,
     rp.report_count                        AS report_count,
     rp.report_count = 0                    AS never_heard,

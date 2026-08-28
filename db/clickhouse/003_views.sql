@@ -139,6 +139,7 @@ SELECT
     coalesce(sd.population, pp.population)                     AS population_used,
     multiIf(sd.population IS NOT NULL, 'unit', pp.population IS NOT NULL, 'parent', 'none') AS population_basis,
     sd.hazard_exposure AS hazard_exposure,
+    sd.hazard_kind AS hazard_kind, sd.hazard_source_org AS hazard_source_org, sd.hazard_source_licence AS hazard_source_licence,
     sd.hazard_exposure = 'unknown'                             AS hazard_unknown,
     multiIf(sd.hazard_exposure = 'high', 3, sd.hazard_exposure = 'medium', 2, 1) AS hazard_weight,
     (sd.seconds_since_any_report / 3600.0) * coalesce(sd.population, pp.population)

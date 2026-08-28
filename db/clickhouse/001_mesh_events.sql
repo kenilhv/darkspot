@@ -77,9 +77,21 @@ CREATE TABLE IF NOT EXISTS darkspot.pg_hazard_exposure
     disaster_event_id  UUID,
     admin_unit_id      UUID,
     level              String,
-    ems_product_ref    Nullable(String)
+    ems_product_ref    Nullable(String),
+    observed_event_kind Nullable(String),
+    source_org         Nullable(String),
+    source_licence     Nullable(String)
 )
 ENGINE = PostgreSQL('postgres:5432', 'darkspot', 'hazard_exposure', 'darkspot', 'darkspot');
+
+CREATE TABLE IF NOT EXISTS darkspot.pg_devices
+(
+    pubkey             String,        -- bytea arrives as text '\x..' via the PostgreSQL engine; compared with hex(FixedString)
+    trust              String,
+    first_seen         DateTime64(6, 'UTC'),
+    last_seen          DateTime64(6, 'UTC')
+)
+ENGINE = PostgreSQL('postgres:5432', 'darkspot', 'devices', 'darkspot', 'darkspot');
 
 CREATE TABLE IF NOT EXISTS darkspot.pg_reports_human_review
 (
