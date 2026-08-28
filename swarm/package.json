@@ -1,0 +1,12 @@
+{
+  "name": "darkspot-swarm",
+  "version": "0.1.0",
+  "description": "DarkSpot swarm-intelligence layer: PSO relay placement, AntHocNet-inspired routing (AODV baseline), Hungarian + auction taskforce allocation, browser 2D simulation. All UAV/relay routes are simulation-only (is_simulation = true).",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "serve": "node web/serve.js"
+  },
+  "engines": { "node": ">=20" }
+}
