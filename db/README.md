@@ -19,7 +19,8 @@ Schema is applied from `db/postgres/*.sql` and `db/clickhouse/*.sql` on first co
 ## Verify (always the last step)
 
 ```sh
-sh scripts/verify_postgres_rules.sh         # §1a rules are constraints: bad rows rejected (6/6)
+sh scripts/verify_postgres_rules.sh         # §1a rules are constraints: bad rows rejected (7/7)
+python scripts/verify_hdx_load.py NPL       # D-8: admin_units vs COD-AB/COD-PS source files, with HDX dates
 python scripts/verify_clickhouse_views.py   # inserts labelled fixtures, checks all 5 views, drops them (18/18)
 ```
 
@@ -27,7 +28,7 @@ python scripts/verify_clickhouse_views.py   # inserts labelled fixtures, checks 
 
 | Layer | Object | Notes |
 |---|---|---|
-| Postgres | `disaster_events`, `admin_units`, `authorized_orgs`, `devices`, `reports_human_review`, `escalations`, `access_roles`, `downstream_exports`, `drone_routes_simulated`, `hazard_exposure` | §2 tables; `escalations.authorized_by` NOT NULL + non-blank, `drone_routes_simulated` CHECK `is_simulation = true`, PII access needs a named grant |
+| Postgres | `disaster_events`, `admin_units`, `authorized_orgs`, `principals`, `devices`, `reports_human_review`, `escalations`, `access_roles`, `downstream_exports`, `drone_routes_simulated`, `hazard_exposure` | §2 tables; `escalations.authorized_by` NOT NULL + non-blank, `drone_routes_simulated` CHECK `is_simulation = true` (+ `relay_positions`/`route_id` for SWARM), `access_roles` keys on `principals.id` and a PII grant is trigger-checked against the granting org |
 | ClickHouse | `mesh_events` | immutable MergeTree, raw_text kept next to extracted fields, partitioned per event |
 | ClickHouse | `mv_silence_duration` → `silence_state` → view `silence_duration` | raw time-since-any-report and time-since-human-confirmed; never-heard settlements present with the clock running from activation |
 | ClickHouse | `mv_corroboration` → `corroboration_state` → view `corroboration` | distinct device identities, tiers `unverified-single-source` / `corroborated-multi-source` / `human-verified` |
