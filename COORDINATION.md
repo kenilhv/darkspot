@@ -473,3 +473,4 @@ In priority order:
 15:30 [CHAT] loop 10 (lock, idle). Deltas: none (57af0a8; LibreChat :3080 up; no key). Next: sleep 600.
 15:30 [CORE] loop 9 (lock, idle). Deltas: none. Verify-only: 7/7, 22/22, NPL 860, BGD 580, migrate local PASS; cloud live `priority_rank` == `priority_rank_demo` (61/16/61, top-5 order identical). No directives to CORE. No code changes. Next: sleep 600; post-lock order unchanged (cloud parity via --with-pg-links, formula (b), bitchat ingestion).
 15:32 [DESIGN] loop 10 (lock, idle). Deltas: none. :5198 (pid 30764) / :5197 (pid 43416) both 200; tree clean at ccdd829. Post-lock queue unchanged: dusk-ramp respacing (SWARM mirror refresh), DataProvenance footer, access-level label, formula copy if Kenil picks (b). Next: sleep 600.
+15:33 [MON] loop 14 (lock). No deltas: all 5 idle-verifying green, :5177/:5198/:3080 up. RESEARCH closed the last uncited §2 claim (competitor offline-mesh gap, primary sources quoted). No directives. Next ~10 min.
