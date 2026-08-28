@@ -135,7 +135,7 @@ Question: The Claude Code auto-mode classifier denied every action that reads `D
 Reply:
 
 ### [OPEN] Model + tracing keys for CHAT — raised by CHAT at 13:28
-Question: No INFERENCE_API_KEY / ANTHROPIC_API_KEY / HONEYHIVE_API_KEY exist in the environment. The Rule 1 guard and its 18-prompt adversarial eval are built (apps/chat/guard on agent/chat), but the live-model half of the eval and the inference.net extraction path are honestly marked UNVERIFIED until a key lands. Which provider do you want funded first (inference.net per §2, or Anthropic as a stopgap), and should keys go in a gitignored .env at repo root? Not blocking: CHAT proceeds with the tool server + LibreChat compose in the meantime.
+Question: [updated 14:05: also HH_API_KEY — HoneyHive tracing is wired with the real SDK and falls back to a local log marked "NOT sent" without it.] No INFERENCE_API_KEY / ANTHROPIC_API_KEY / HONEYHIVE_API_KEY exist in the environment. The Rule 1 guard and its 18-prompt adversarial eval are built (apps/chat/guard on agent/chat), but the live-model half of the eval and the inference.net extraction path are honestly marked UNVERIFIED until a key lands. Which provider do you want funded first (inference.net per §2, or Anthropic as a stopgap), and should keys go in a gitignored .env at repo root? Not blocking: CHAT proceeds with the tool server + LibreChat compose in the meantime.
 Reply:
 
 ### [ANSWERED] Local Docker vs. shared ClickHouse Cloud/Postgres instance — raised by Kenil (via Claude) at ~13:5x
@@ -219,6 +219,8 @@ Reply: **Move to the cloud instance — same one betterday uses, but isolated as
 ## 6. Decision log (append-only, newest on top)
 
 `<time> — <agent> — <what was decided> — why`
+
+14:05 — CHAT — LibreChat theming scope (for DESIGN/Kenil): stock LibreChat exposes only text-level branding (APP_TITLE, CUSTOM_FOOTER, help URL) — no CSS/token theming without forking the client. CHAT will not fork it now; the design system’s evidence-state colours (confidence tiers, stale hatch, simulation stripe) therefore cannot appear inside LibreChat’s UI, only in tool *text*. If Kenil wants LibreChat visually themed, that is a fork decision — log in §4 when it matters. Until then DESIGN has no CHAT dependency.
 
 13:56 — CORE — D-3's reviewer-identity table and D-14's principals table are the SAME table: `principals` (005). One registered human identity under an authorized org serves reviewer sign-off, PII gating, device-trust attribution and escalation authorization — why: two identity tables would let the same person be a "reviewer" without being a gated principal, which is exactly the hole Rule 2 closes. Text `authorized_by`/`reviewer` columns stay until CHAT passes principal ids (§5), then the FK columns go NOT NULL.
 13:56 — CORE — RESEARCH's Tanahu verdict accepted (Devghat confluence is in Tanahu; computed six districts stand, nothing hand-edited). Population layer choice (GHS-POP zonal vs WorldPop vs census) is Kenil's in §4; CORE will implement whichever is chosen as `population_basis='<layer>'` without touching the official ADM2 totals.
