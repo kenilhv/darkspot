@@ -139,6 +139,7 @@
 .ds-settlement__stale { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-space-2); font-size: var(--ds-text-sm); color: var(--ds-color-text-secondary); }
 .ds-settlement__tiers { display: flex; flex-wrap: wrap; gap: var(--ds-space-2); margin: 0; padding: 0; list-style: none; }
 .ds-settlement__tiers li { display: inline-flex; align-items: center; gap: var(--ds-space-1); }
+.ds-settlement__trusted { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .ds-settlement__children { display: flex; flex-direction: column; gap: var(--ds-space-2); padding-top: var(--ds-space-2); border-top: 1px solid var(--ds-color-border); }
 
 /* ---------- Utilities ---------- */

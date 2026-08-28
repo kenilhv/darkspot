@@ -42,12 +42,19 @@ t('settlement card: rank, silence swatch with raw hours, never-heard wording, po
   assert.match(s, /41 h/); assert.match(s, /--ds-silence-5/);
   assert.match(s, /No report received since activation/); assert.doesNotMatch(s, /silent/, 'no coverage evidence: never the word silent'); assert.match(s, /no report</); assert.match(s, /absence of data/);
   assert.match(s, /silence × population \(parent\) × hazard weight/);
-  const c = html(h(SettlementCard, { ...row, coverageBasis: 'device_seen_before_activation' }));
+  const c = html(h(SettlementCard, { ...row, coverageBasis: 'device_sighted_before_activation' }));
+  const after = html(h(SettlementCard, { ...row, coverageBasis: 'device_sighted_after_activation' }));
+  assert.match(after, /reachable since activation/); assert.doesNotMatch(after, /silent/);
+  const bogus = html(h(SettlementCard, { ...row, coverageBasis: 'device_seen_before_activation' }));
+  assert.doesNotMatch(bogus, /silent/, 'old interim value is not honoured');
+  assert.match(bogus, /no coverage evidence/);
   assert.match(c, /Silent: no report since activation/); assert.match(c, /silent</);
   assert.match(s, /46,000/); assert.match(s, /parent-district figure/);
   assert.match(s, /ds-hazard--high/); assert.match(s, /Hazard exposure: high/);
   assert.match(s, /ds-stale/); assert.match(s, /past the 12 h window/);
   assert.match(s, /ds-tier--corroborated/); assert.match(s, /3 devices/); assert.match(s, /ds-tier--unverified/);
+  const tr = html(h(SettlementCard, { ...row, corroboration: [{ extracted_status: 'safe', confidence_tier: 'corroborated-multi-source', distinct_devices: 5, distinct_trusted_devices: 1, trusted_corroboration: 0 }] }));
+  assert.match(tr, /1 trusted/); assert.match(tr, /ds-settlement__trusted ds-mono ds-settlement__flag/, 'untrusted corroboration is flagged');
   assert.match(s, /adm3/);
 });
 t('settlement card: unknown hazard is hatched, null silence renders stale, none basis flagged', () => {

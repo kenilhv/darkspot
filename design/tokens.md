@@ -102,10 +102,12 @@ and `tokens.ts` disagree. `swarm/web` should `fetch('tokens.json')` or `<link>` 
 rather than copy values. `sky` on the canvas: there is no focus ring on a canvas, so sky-300 is
 the one unreserved hue left for units and pairings — the reservation table in tokens.json says so.
 
-**Coverage wording (D-18/D-21):** `SettlementCard` only says *silent* when `coverageBasis ===
-'device_seen_before_activation'`; otherwise the swatch reads *no report* and the contact line says
-"No report received since activation · absence of data, not a signal". The value strings will be
-aligned to CORE's `coverage_basis` column when it lands.
+**Coverage wording (D-18/D-21/D-24):** `SettlementCard` takes CORE's `coverage_basis` enum
+(`device_sighted_before_activation | device_sighted_after_activation | none`) and only says *silent*
+for the first; the others read *no report* — "reachable since activation but no report" / "no coverage
+evidence — absence of data, not a signal". Unrecognised strings are treated as `none`. When CORE's
+`corroboration` row carries `distinct_trusted_devices`, the card prints "N trusted" beside the tier
+and flags it (amber) when `trusted_corroboration` is false — the tier itself is never re-labelled.
 | `label` / `silence-ring` | n-0 / `#8F959E` | canvas text; outline so deep silence steps don't vanish into the dark canvas |
 
 All node/route colours ≥ 3:1 on the canvas; label 15.5:1. Node *kind* must also be encoded by

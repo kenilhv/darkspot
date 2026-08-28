@@ -86,21 +86,26 @@ export function RawReport({ id, receivedAt, devicePubkey, hopCount, extractedSta
 /* ---------- SettlementCard: one priority_rank row with its evidence state ---------- */
 export type HazardExposure = 'high' | 'medium' | 'low' | 'unknown';
 /**
- * Per-unit coverage evidence (D-18, RESEARCH review #1 finding 1). Values follow
- * MON's D-18 sketch until CORE ships `coverage_basis` — DESIGN will align the
- * strings to CORE's DDL then. Only `device_seen_before_activation` licenses the
- * word "silent"; everything else is "no report received", which is not a signal.
+ * Per-unit coverage evidence — CORE `silence_duration.coverage_basis`
+ * (db/clickhouse/003_views.sql, migration 008 `device_sightings`; D-24). Only
+ * `device_sighted_before_activation` licenses the word "silent";
+ * `device_sighted_after_activation` = reachable since activation but no report;
+ * `none` = no coverage evidence: absence of data, not a signal.
  */
-export type CoverageBasis = 'device_seen_before_activation' | 'no_prior_coverage' | 'unknown';
+export type CoverageBasis = 'device_sighted_before_activation' | 'device_sighted_after_activation' | 'none';
 export const coverageLabel: Record<CoverageBasis, string> = {
-  device_seen_before_activation: 'a mesh device was seen here before activation',
-  no_prior_coverage: 'no DarkSpot device was ever seen near this unit — absence of data, not a signal',
-  unknown: 'coverage before activation unknown — treat as absence of data',
+  device_sighted_before_activation: 'a mesh device was sighted here before activation',
+  device_sighted_after_activation: 'reachable since activation (device sighted) but no report',
+  none: 'no coverage evidence — absence of data, not a signal',
 };
 export interface CorroborationRow {
   extracted_status: ExtractedStatus | string;
   confidence_tier: ConfidenceTier | string;
   distinct_devices: number;
+  /** CORE `corroboration.distinct_trusted_devices` — devices at trust vouched/responder. */
+  distinct_trusted_devices?: number;
+  /** CORE `corroboration.trusted_corroboration` — ≥2 trusted devices (Sybil-resistant reading). */
+  trusted_corroboration?: boolean | number;
 }
 export interface SettlementCardProps extends HTMLAttributes<HTMLElement> {
   rank?: number;
@@ -114,7 +119,7 @@ export interface SettlementCardProps extends HTMLAttributes<HTMLElement> {
   populationUsed?: number | null;
   populationBasis?: 'unit' | 'parent' | 'none' | string;
   hazardExposure: HazardExposure | string;
-  /** Omitted or non-`device_seen_before_activation` ⇒ wording is "no report", never "silent". */
+  /** Omitted, unrecognised or non-`device_sighted_before_activation` ⇒ wording is "no report", never "silent". */
   coverageBasis?: CoverageBasis | string | null;
   corroboration?: CorroborationRow[];
   isStale?: boolean;
@@ -131,8 +136,8 @@ const hazardLabel: Record<HazardExposure, string> = {
 };
 export function SettlementCard({ rank, name, pcode, granularityLevel, neverHeard, silenceHours, reportCount, lastReportAt, populationUsed, populationBasis, hazardExposure, coverageBasis, corroboration = [], isStale, windowHours, effectiveStatus, children, className, ...rest }: SettlementCardProps) {
   const hz = (hazardExposure in hazardLabel ? hazardExposure : 'unknown') as HazardExposure;
-  const cov = (coverageBasis && coverageBasis in coverageLabel ? coverageBasis : 'unknown') as CoverageBasis;
-  const covered = cov === 'device_seen_before_activation';
+  const cov = (coverageBasis && coverageBasis in coverageLabel ? coverageBasis : 'none') as CoverageBasis;
+  const covered = cov === 'device_sighted_before_activation';
   const silenceWord = covered ? 'silent' : 'no report';
   const tiers = corroboration.filter((c) => (confidenceTiers as readonly string[]).includes(c.confidence_tier));
   return (
@@ -151,7 +156,7 @@ export function SettlementCard({ rank, name, pcode, granularityLevel, neverHeard
           <dd>
             {neverHeard
               ? covered
-                ? 'Silent: no report since activation, although a device was seen here before'
+                ? 'Silent: no report since activation, although a device was sighted here before'
                 : 'No report received since activation'
               : `${reportCount ?? '?'} report${reportCount === 1 ? '' : 's'}${lastReportAt ? `, last ${lastReportAt}` : ''}`}
             <span className={cx('ds-settlement__coverage', !covered && 'ds-settlement__flag')}> · {coverageLabel[cov]}</span>
@@ -187,6 +192,11 @@ export function SettlementCard({ rank, name, pcode, granularityLevel, neverHeard
             <li key={i}>
               <StatusChip status={c.extracted_status} />
               <ConfidenceTierBadge tier={c.confidence_tier as ConfidenceTier} count={c.distinct_devices} size="sm" />
+              {c.distinct_trusted_devices != null && (
+                <span className={cx('ds-settlement__trusted ds-mono', !c.trusted_corroboration && 'ds-settlement__flag')}>
+                  {c.distinct_trusted_devices} trusted
+                </span>
+              )}
             </li>
           ))}
         </ul>
