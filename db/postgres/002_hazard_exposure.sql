@@ -17,6 +17,7 @@ CREATE TABLE hazard_exposure (
 );
 
 -- Window after which a settlement's last known status decays back to 'unknown, needs re-verification' (mv_staleness).
--- A parameter chosen per deployment by the authorized org, not a claim about the world.
+-- DEFAULT 24 IS ARBITRARY (no source) — a per-deployment knob the authorized org must set; it is not a finding
+-- about how fast disaster situations change. (RESEARCH review pass #1, finding 5.)
 ALTER TABLE disaster_events
   ADD COLUMN staleness_window_hours integer NOT NULL DEFAULT 24 CHECK (staleness_window_hours > 0);

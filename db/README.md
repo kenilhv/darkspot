@@ -32,7 +32,7 @@ python scripts/verify_clickhouse_views.py   # inserts labelled fixtures, checks 
 | ClickHouse | `mesh_events` | immutable MergeTree, raw_text kept next to extracted fields, partitioned per event |
 | ClickHouse | `mv_silence_duration` → `silence_state` → view `silence_duration` | raw time-since-any-report and time-since-human-confirmed; never-heard settlements present with the clock running from activation |
 | ClickHouse | `mv_corroboration` → `corroboration_state` → view `corroboration` | distinct device identities, tiers `unverified-single-source` / `corroborated-multi-source` / `human-verified` |
-| ClickHouse | `mv_staleness` → `staleness_state` → view `staleness` | decays to `unknown, needs re-verification` past `disaster_events.staleness_window_hours` |
+| ClickHouse | `mv_staleness` → `staleness_state` → view `staleness` | decays to `unknown, needs re-verification` past `disaster_events.staleness_window_hours` — **the default of 24 h is arbitrary (uncited); the authorized org sets it per deployment** |
 | ClickHouse | view `conflicts` | disagreeing reports side by side with raw text |
 | ClickHouse | view `priority_rank` | silence_hours × population × hazard_weight; `population_basis` and `hazard_unknown` flags are explicit |
 | ClickHouse | `pg_*` | PostgreSQL-engine read-through tables (live, not copies) |
