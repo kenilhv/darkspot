@@ -126,7 +126,9 @@ Reply:
 
 ## 5. Dependency graph
 
-*(empty — agents add/remove lines here as cross-agent dependencies form/resolve)*
+- CHAT → CORE: extraction writes `darkspot.mesh_events` (ClickHouse) with `raw_text` intact and `extracted_status ∈ {safe, needs_help, casualties, unknown}` (default `unextracted`); coordinator tools read views `silence_duration`, `priority_rank`, `corroboration`, `staleness`, `conflicts` — all keyed by `disaster_event_id`. Contract in `db/README.md`. No CORE dependency on CHAT: every view works with zero extracted fields.
+- SWARM → CORE: relay placement / task allocation should consume `priority_rank` (+ `admin_units.centroid_lat/lon`, `geohash`) and write routes ONLY to `drone_routes_simulated` (CHECK `is_simulation = true`). CORE owes SWARM nothing further until asked.
+- CORE → RESEARCH: two facts to double-check, logged in §6 (Tanahu 6th district from geometry; ADM3 population basis).
 
 ---
 
@@ -134,6 +136,12 @@ Reply:
 
 `<time> — <agent> — <what was decided> — why`
 
+13:39 — CORE — **Backend v0 is real and verified end-to-end** on branch `agent/core` (worktree `../darkspot-core`): docker-compose (ports offset +1 so the historical betterday stack can coexist), all §2 Postgres tables with rule constraints, ClickHouse `mesh_events` + 5 views, HDX + Copernicus connectors parameterized by ISO3 / `disaster_event_id`. Nepal case loaded from real sources (see `db/README.md` provenance). Fresh `down -v` → `up` → connectors → verifiers reproduces: 860 admin units, 61 in-scope municipalities, 16 `high`, 45 `unknown`, 18/18 + 6/6 checks. No LLM anywhere in this layer.
+13:39 — CORE — Event scope := the set of `hazard_exposure` rows for the event (one per finest-level admin unit in every district touched by any Copernicus AOI/observed extent; default `unknown`) — why: an insert-driven MV can't show a settlement that never sent anything, and never-heard is the whole point; scoping through hazard_exposure makes "unknown" explicit for every unit instead of implied by absence.
+13:39 — CORE — Hazard levels written are only `high` (intersects an observed-event polygon, cited per row) or `unknown`. `low`/`medium` exist in the enum for graded products but are never derived from absence of mapped water — why: absence ≠ safety (§2 fallback rule).
+13:39 — CORE — `priority_rank` and `conflicts` are query-time views, not MVs — why: they depend on now() and on Postgres human-authority tables; an insert-driven MV can't re-evaluate them. `mv_silence_duration`, `mv_corroboration`, `mv_staleness` are true incremental MVs into AggregatingMergeTree state.
+13:39 — CORE — **Flag for Kenil/RESEARCH (not a bug, a property):** COD-PS Nepal publishes population only to ADM2 (district). At ADM3 `priority_rank` uses the parent district figure (`population_basis='parent'`), so a hazard-`unknown` municipality in Chitwan (~700k) outranks a hazard-`high` one in Rasuwa (~46k) while all are equally silent. Either accept (formula per spec, visible flags) or source a finer population layer (WorldPop/GHSL — RESEARCH to verify licensing/accuracy before use). Second flag: geometry intersects a 6th district (Tanahu — Aanbu Khaireni at the Narayani confluence) while HOT's description says five; likely a COD-AB vs HOT boundary artifact — left as computed, not hand-edited.
+13:39 — CORE — Two migrations beyond the §2 list: `hazard_exposure` (event × admin unit, from the Copernicus connector) and `disaster_events.staleness_window_hours` / `glide_number` / `gdacs_id` — why: the connector table in §2 needs somewhere to land hazard exposure, mv_staleness needs a per-deployment window, and GLIDE is the cross-agency id used by HDX/ReliefWeb/GDACS.
 *(this session, ~11:3x)* — Kenil (via Claude) — Fresh repo created at `D:\hackathons\darkspot`, `git init -b main`. The original `betterday` repo and all its worktrees (Caseload/Bridge/NextStep + design system) are left completely untouched as historical record — nothing deleted, nothing merged. This file ports the full DarkSpot spec (product rules, architecture, swarm-intelligence research, judge-panel findings) developed in direct conversation, so no agent arming into this repo needs the original chat history to get started.
 
 ---
@@ -152,7 +160,7 @@ In priority order:
 
 | Component | Service | Live URL | Status |
 |---|---|---|---|
-| — | — | — | not yet deployed |
+| CORE backend | local docker compose (`darkspot-core/docker-compose.yml`) | postgres :5433, clickhouse :8124/:9001 | local only, verified fresh-init |
 
 ---
 
@@ -162,4 +170,5 @@ In priority order:
 <time> [MON] ...
 13:21 [CORE] armed in worktree ../darkspot-core (agent/core). docker-compose.yml up: Postgres 16 wal_level=logical on :5433, ClickHouse 25.3 on :8124/:9001 (offset so betterday stack can coexist). Next: Postgres schema §2.
 13:24 [CORE] Postgres schema db/postgres/001_schema.sql: all 9 §2 tables. Rule 2 (escalations.authorized_by NOT NULL + non-blank CHECK), Rule 4 (drone_routes_simulated CHECK is_simulation=true), PII-needs-grant, 32-byte pubkey — verified rejecting bad rows via scripts/verify_postgres_rules.sh (6/6 OK). Next: ClickHouse mesh_events + mv_silence_duration.
+13:39 [CORE] Backend v0 done + verified from fresh init (see §6). 9 commits on agent/core. Connectors: HDX COD-AB/PS (any ISO3), Copernicus EMS (+extra published extents). Next loop: idle-priority-1 re-verification; candidates — bitchat packet ingestion path into mes_events (needs protocol check), per-country connector test on a 2nd ISO3 to prove non-hardcoding.
 ```
