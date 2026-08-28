@@ -224,7 +224,7 @@
 .ds-coord__formula { margin: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text-secondary); max-width: var(--ds-measure); }
 .ds-coord__legend { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ds-space-4); align-items: flex-end; }
 .ds-coord__tierkey { display: flex; flex-wrap: wrap; gap: var(--ds-space-2); }
-.ds-coord__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: var(--ds-space-3); }
+.ds-coord__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); gap: var(--ds-space-3); }
 @media (max-width: 480px) { .ds-coord__list { grid-template-columns: 1fr; } .ds-coord { padding-inline: var(--ds-space-4); } }
 .ds-coord__more { align-self: center; min-height: var(--ds-touch-target); padding: 0 var(--ds-space-6); font: inherit; font-weight: var(--ds-weight-bold); color: var(--ds-color-accent); background: var(--ds-color-accent-soft); border: 1px solid var(--ds-color-accent-soft-border); border-radius: var(--ds-radius-md); cursor: pointer; }
 .ds-coord__more:hover { background: var(--ds-color-bg-well); }
