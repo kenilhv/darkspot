@@ -26,7 +26,7 @@ applyTokens(EMBEDDED_TOKENS);
 try { const r = await fetch('/packages/ui/tokens.json'); if (r.ok) { applyTokens(await r.json()); C.tokenSource = '@darkspot/ui tokens.json'; } } catch { /* embedded mirror stays */ }
 function coverageText(s) {
   const h = Math.round(s.silenceHours);
-  if (s.coverageBasis === undefined) return `${h}h (scenario value)`;                       // synthetic scenario
+  if (s.coverageBasis === undefined) return `${h}h`;                                        // synthetic scenario: "these are scenario values" is carried once by the SIMULATION banner, the on-canvas footer and the readout — not repeated on all 19 labels
   if (s.coverageBasis === 'device_sighted_before_activation') return `silent ${h}h`;
   if (s.coverageBasis === 'device_sighted_after_activation') return `reachable, no report ${h}h`;
   return 'no report · no coverage';
@@ -71,11 +71,17 @@ let drawnLabels = [];
 function label(text, x, y, color = C.label, align = 'left', { skipIfOverlap = false } = {}) {
   ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.textAlign = align; ctx.textBaseline = 'middle';
   const w = ctx.measureText(text).width;
-  const lx = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
+  let lx = align === 'left' ? x : align === 'right' ? x - w : x - w / 2;
+  // Keep the label inside the canvas: near the right edge, flip it to the other side of its
+  // anchor (the +14px node offset, mirrored) rather than letting the text run off and clip —
+  // a half-drawn "S18 · 39" reads as a different number, which this page must never do.
+  if (lx + w + 3 > W) lx = Math.max(3, x - w - 28);
+  if (lx < 3) lx = 3;
   const box = [lx - 3, y - 7, w + 6, 14];
   if (skipIfOverlap && drawnLabels.some(([bx, by, bw, bh]) => lx - 3 < bx + bw && lx - 3 + w + 6 > bx && y - 7 < by + bh && y + 7 > by)) return false;
   drawnLabels.push(box);
-  ctx.fillStyle = 'rgba(15,17,20,0.75)'; ctx.fillRect(...box); ctx.fillStyle = color; ctx.fillText(text, x, y);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(15,17,20,0.75)'; ctx.fillRect(...box); ctx.fillStyle = color; ctx.fillText(text, lx, y);
   return true;
 }
 function polyline(points, { color, width = 1.5, dash = [], alpha = 1 }) {
