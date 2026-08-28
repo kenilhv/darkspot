@@ -8,3 +8,4 @@ COPY tools ./tools
 COPY proxy ./proxy
 COPY prompts ./prompts
 COPY intake ./intake
+COPY trace ./trace

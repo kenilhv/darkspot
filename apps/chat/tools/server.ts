@@ -29,9 +29,11 @@ import { CONTRACT, type ChView } from "./contract.ts";
 import { chColumns, chConfigFromEnv, chQuery, type ChConfig } from "./clickhouse.ts";
 import { extractOptionsFromEnv, extractReport, publicFields } from "../intake/extract.ts";
 import { newReport, storeReport } from "../intake/store.ts";
+import { getTracer } from "../trace/honeyhive.ts";
 import { blockquote, formatConflicts, formatPriorityRanking, formatRoutePlan, guardToolText, notAvailable, type ConflictRow, type RankRow, type RouteRow } from "./format.ts";
 
 const PORT = Number(process.env.PORT ?? 3311);
+const tracer = await getTracer({ sessionName: process.env.HH_SESSION_NAME ?? "darkspot-tools" });
 
 // ---------- availability checks (fail closed) ----------
 
@@ -75,7 +77,11 @@ async function pgTableReady(table: keyof typeof CONTRACT.postgres): Promise<{ ok
   }
 }
 
-const text = (t: string) => ({ content: [{ type: "text" as const, text: guardToolText(t) }] });
+const text = (t: string) => {
+  const guarded = guardToolText(t);
+  tracer.enrich({ metadata: { rule1_withheld: guarded !== t, chars: guarded.length } });
+  return { content: [{ type: "text" as const, text: guarded }] };
+};
 
 // ---------- tools ----------
 
@@ -91,7 +97,7 @@ export function buildServer(): McpServer {
         "region = disaster_events.id, a substring of the event's region label, or a settlement name. Never a recommendation of where to go.",
       inputSchema: { region: z.string().min(1).describe("disaster_events.id (UUID), event region text, or settlement name"), limit: z.number().int().min(1).max(50).default(10) },
     },
-    async ({ region, limit }) => {
+    tracer.wrap("tool", "get_priority_ranking", async ({ region, limit }) => {
       const cfg = chConfigFromEnv();
       const ready = await chViewsReady(cfg, ["priority_rank", "corroboration", "staleness", "mesh_events", "pg_disaster_events"]);
       if (!ready.ok) return text(notAvailable("Priority ranking", ready.why));
@@ -127,7 +133,7 @@ export function buildServer(): McpServer {
         }
       }
       return text(formatPriorityRanking(region, rows, `${ready.cfg.db}.priority_rank`));
-    },
+    }),
   );
 
   server.registerTool(
@@ -137,7 +143,7 @@ export function buildServer(): McpServer {
       description: "Evidence only: settlements where distinct devices reported different statuses inside the staleness window (CORE's ClickHouse conflicts view), shown side by side with raw text. Nothing is resolved.",
       inputSchema: { settlement: z.string().min(1).describe("Settlement P-code or name (substring)") },
     },
-    async ({ settlement }) => {
+    tracer.wrap("tool", "get_conflicts", async ({ settlement }) => {
       const cfg = chConfigFromEnv();
       const ready = await chViewsReady(cfg, ["conflicts", "pg_admin_units"]);
       if (!ready.ok) return text(notAvailable("Conflicts", ready.why));
@@ -152,7 +158,7 @@ export function buildServer(): McpServer {
         { s: settlement },
       );
       return text(formatConflicts(settlement, rows, `${ready.cfg.db}.conflicts`));
-    },
+    }),
   );
 
   server.registerTool(
@@ -163,7 +169,7 @@ export function buildServer(): McpServer {
         "SIMULATION ONLY. Returns rows from Postgres drone_routes_simulated for the given fleet size (is_simulation = true, enforced by CHECK). No drone is flying; nothing here is deconflicted with an airspace authority.",
       inputSchema: { fleet_size: z.number().int().min(1).max(100).describe("Number of simulated relay units") },
     },
-    async ({ fleet_size }) => {
+    tracer.wrap("tool", "get_route_plan", async ({ fleet_size }) => {
       const ready = await pgTableReady("drone_routes_simulated");
       if (!ready.ok) return text(notAvailable("Simulated route plan", ready.why));
       try {
@@ -175,7 +181,7 @@ export function buildServer(): McpServer {
       } finally {
         await ready.client.end();
       }
-    },
+    }),
   );
 
   server.registerTool(
@@ -194,7 +200,7 @@ export function buildServer(): McpServer {
         settlement_geohash: z.string().optional().describe("Settlement geohash, if known"),
       },
     },
-    async ({ raw_text, disaster_event_id, device_pubkey_hex, settlement_pcode, settlement_geohash }) => {
+    tracer.wrap("tool", "file_field_report", async ({ raw_text, disaster_event_id, device_pubkey_hex, settlement_pcode, settlement_geohash }) => {
       const extraction = await extractReport(raw_text, extractOptionsFromEnv());
       const report = newReport({ disaster_event_id, device_pubkey_hex, raw_text, settlement_pcode, settlement_geohash }, extraction);
       const outcome = await storeReport(report, process.env.OUTBOX_PATH ?? "data/outbox.jsonl", chConfigFromEnv(), process.env.BRIDGE_PUBKEY_HEX);
@@ -210,7 +216,7 @@ export function buildServer(): McpServer {
       if (!settlement_pcode) lines.push("No settlement_pcode given: this report is stored but cannot contribute to silence/priority views until a P-code is attached.");
       lines.push("Confidence tier for this single report: unverified-single-source.");
       return text(lines.join("\n"));
-    },
+    }),
   );
 
   return server;
@@ -221,7 +227,7 @@ export function buildServer(): McpServer {
 const http = createServer(async (req, res) => {
   if (req.url === "/healthz") {
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ ok: true, clickhouse: Boolean(process.env.CLICKHOUSE_URL), postgres: Boolean(process.env.DATABASE_URL), bridge_identity: Boolean(process.env.BRIDGE_PUBKEY_HEX) }));
+    res.end(JSON.stringify({ ok: true, clickhouse: Boolean(process.env.CLICKHOUSE_URL), postgres: Boolean(process.env.DATABASE_URL), bridge_identity: Boolean(process.env.BRIDGE_PUBKEY_HEX), tracing: tracer.mode }));
     return;
   }
   if (!req.url?.startsWith("/mcp")) {

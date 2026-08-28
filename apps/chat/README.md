@@ -36,5 +36,5 @@ It refuses to run if the event already has `mesh_events` rows, because its clean
 - Rule 1 guard: tested (unit) and enforced at runtime by the proxy and by the tool server on its own output. The live-model half of the eval is **unverified** until a model key exists (§4).
 - Extraction: **unverified** — no inference.net key; reports are stored as `extracted_status='unextracted'`, never guessed.
 - Access control: CORE's `access_roles` exists but no caller identity is wired, so every viewer is `aggregate_only`: `extracted_people` is never shown, status `casualties` is a restricted marker, and the raw text of casualty-status reports is withheld (§6 decision).
-- HoneyHive tracing: not built yet (key-blocked).
+- HoneyHive tracing: wired with the real `honeyhive` SDK (`trace/honeyhive.ts`: tool, model and chain spans over extraction → ranking → route → chat turn) but **unverified** — no HH_API_KEY, so spans go to `data/trace.jsonl` marked "NOT sent". Known gap: LibreChat does not propagate a conversation id to MCP tools or to the proxy, so proxy and tool spans land in separate sessions until that exists.
 - Route plans: read from `drone_routes_simulated` only; every response says "simulation" in prose.

@@ -15,6 +15,7 @@
  * stored, never echoed back to the reporter or an unauthorized viewer.
  */
 import { RESTRICTED_COLUMNS, RESTRICTED_STATUS, RESTRICTED_STATUS_LABEL } from "../tools/contract.ts";
+import { getTracer } from "../trace/honeyhive.ts";
 
 export const STATUS_VALUES = ["safe", "needs_help", "casualties", "unknown"] as const;
 export type ExtractedStatus = (typeof STATUS_VALUES)[number];
@@ -91,7 +92,9 @@ export async function extractReport(rawText: string, opts: ExtractOptions): Prom
     return { status: "unverified-no-extraction", model: "", fields: null, note: "No INFERENCE_API_KEY/INFERENCE_MODEL configured; stored as extracted_status='unextracted', nothing inferred." };
   }
   const model = `inference.net/${opts.model}`;
-  const f = opts.fetchImpl ?? fetch;
+  const f0 = opts.fetchImpl ?? fetch;
+  // model span on the extraction call (HoneyHive when keyed, local log otherwise); never alters the result
+  const f = (await getTracer()).wrap("model", "extract_field_report", f0, { model, chars: rawText.length });
   try {
     const r = await f(`${opts.baseUrl!.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",

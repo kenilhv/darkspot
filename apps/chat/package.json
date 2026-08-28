@@ -7,13 +7,14 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test guard/*.test.ts tools/*.test.ts proxy/*.test.ts intake/*.test.ts",
+    "test": "node --test guard/*.test.ts tools/*.test.ts proxy/*.test.ts intake/*.test.ts trace/*.test.ts",
     "eval:rule1": "node guard/rule1.eval.ts",
     "tools": "node tools/server.ts",
     "proxy": "node proxy/server.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "honeyhive": "^1.0.45",
     "pg": "^8.23.0",
     "zod": "^4.5.1"
   }

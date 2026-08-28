@@ -27,9 +27,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { enforceRule1 } from "../guard/rule1.ts";
+import { getTracer } from "../trace/honeyhive.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const SYSTEM_PROMPT = readFileSync(join(here, "..", "prompts", "coordinator.system.md"), "utf8");
+const tracer = await getTracer({ sessionName: process.env.HH_SESSION_NAME ?? "darkspot-proxy" });
 
 export interface ProxyOptions {
   upstreamBaseUrl?: string;
@@ -77,7 +79,7 @@ export function createProxy(opts: ProxyOptions) {
   return createServer(async (req, res) => {
     const url = req.url ?? "/";
     if (req.method === "GET" && url === "/healthz") {
-      return json(res, 200, { ok: true, upstream: Boolean(opts.upstreamBaseUrl && opts.upstreamApiKey) });
+      return json(res, 200, { ok: true, upstream: Boolean(opts.upstreamBaseUrl && opts.upstreamApiKey), tracing: tracer.mode });
     }
     if (req.method === "GET" && url.endsWith("/models")) {
       // LibreChat may probe this; a configured model list lives in librechat.yaml, so this is informational only.
@@ -106,23 +108,37 @@ export function createProxy(opts: ProxyOptions) {
     const upstreamBody = { ...body, stream: false, messages: withSystemPrompt(body.messages ?? []) };
     delete upstreamBody.stream_options;
 
-    let completion: any;
-    try {
-      const r = await fetch(`${opts.upstreamBaseUrl.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${opts.upstreamApiKey}` },
-        body: JSON.stringify(upstreamBody),
-      });
-      const text = await r.text();
-      if (!r.ok) return json(res, r.status, { error: { message: `upstream ${r.status}: ${text.slice(0, 500)}` } });
-      completion = JSON.parse(text);
-    } catch (e) {
-      return json(res, 502, { error: { message: `upstream unreachable: ${(e as Error).message}` } });
-    }
-
-    const g = guardCompletion(completion);
-    opts.onGuardEvent?.({ blocked: g.blocked, violations: g.violations, model: String(body.model ?? "") });
-    if (g.blocked) console.error("[rule1] blocked assistant turn:", JSON.stringify(g.violations));
+    // One chain span per chat turn: model call → guard verdict. Tracing never alters the result.
+    const turn = tracer.wrap(
+      "chain",
+      "chat_turn",
+      async (): Promise<{ status: number; body: any; completion?: any }> => {
+        const callUpstream = tracer.wrap("model", "chat_completion", async (): Promise<{ ok: boolean; status: number; text: string }> => {
+          const r = await fetch(`${opts.upstreamBaseUrl!.replace(/\/$/, "")}/chat/completions`, {
+            method: "POST",
+            headers: { "content-type": "application/json", authorization: `Bearer ${opts.upstreamApiKey}` },
+            body: JSON.stringify(upstreamBody),
+          });
+          return { ok: r.ok, status: r.status, text: await r.text() };
+        }, { model: String(body.model ?? ""), tool_count: Array.isArray(body.tools) ? body.tools.length : 0 });
+        let up: { ok: boolean; status: number; text: string };
+        try {
+          up = await callUpstream();
+        } catch (e) {
+          return { status: 502, body: { error: { message: `upstream unreachable: ${(e as Error).message}` } } };
+        }
+        if (!up.ok) return { status: up.status, body: { error: { message: `upstream ${up.status}: ${up.text.slice(0, 500)}` } } };
+        const completion = JSON.parse(up.text);
+        const g = guardCompletion(completion);
+        tracer.enrich({ metadata: { rule1_blocked: g.blocked, rule1_violations: g.violations.length, finish_reason: completion.choices?.[0]?.finish_reason ?? null, tool_calls: completion.choices?.[0]?.message?.tool_calls?.length ?? 0 } });
+        opts.onGuardEvent?.({ blocked: g.blocked, violations: g.violations, model: String(body.model ?? "") });
+        if (g.blocked) console.error("[rule1] blocked assistant turn:", JSON.stringify(g.violations));
+        return { status: 200, body: completion, completion };
+      },
+    );
+    const result = await turn();
+    if (result.status !== 200) return json(res, result.status, result.body);
+    const completion = result.completion;
 
     if (!wantStream) return json(res, 200, completion);
 
