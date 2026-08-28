@@ -56,15 +56,15 @@
         </ul>
       </section>
 
-      <section class="card" aria-label="Perturb the scenario">
-        <h2>Perturb</h2>
+      <section class="card" aria-label="Simulation inputs">
+        <h2>Simulation inputs — what if…</h2>
         <div class="btns">
-          <button id="ev-congest" class="btn" type="button">Congest a relay</button>
-          <button id="ev-cut" class="btn" type="button">Cut a relay</button>
-          <button id="ev-bump" class="btn" type="button">Raise a priority</button>
-          <button id="ev-restore" class="btn" type="button">Restore</button>
+          <button id="ev-congest" class="btn" type="button">…a relay congests</button>
+          <button id="ev-cut" class="btn" type="button">…a relay fails</button>
+          <button id="ev-bump" class="btn" type="button">…a settlement's priority rises</button>
+          <button id="ev-restore" class="btn" type="button">…reset the scenario</button>
         </div>
-        <p class="hint">Each button changes one thing and the layer reacts on the next tick: routing re-spreads (or, on the AODV baseline, doesn't), allocation modes flip, pairings move.</p>
+        <p class="hint">These are scenario perturbations of the simulation, not operator actions. Each changes one input; on the next tick routing re-spreads (or, on the AODV baseline, doesn't), allocation modes flip, suggested pairings move.</p>
       </section>
 
       <section class="card" aria-label="Readouts">
@@ -78,7 +78,7 @@
           <div><div class="alloc__head alloc__head--h">Hungarian · connected to command</div><ul id="alloc-h" class="mono"></ul></div>
           <div><div class="alloc__head alloc__head--a">Local auction · no path to command</div><ul id="alloc-a" class="mono"></ul></div>
         </div>
-        <p class="hint">Descriptive only: a pairing is evidence for a human to accept, never an order.</p>
+        <p class="hint" id="alloc-note"></p>
       </section>
 
       <section class="card" aria-label="Event log">

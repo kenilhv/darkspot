@@ -4,7 +4,7 @@
 :root {
   --n0: #F7F6F2; --n5: #85817A; --n6: #8B919B; --n7: #646A73; --n8: #454A52; --n9: #262B33; --n10: #1E2229; --n11: #171A1F; --n12: #0F1114;
   --beacon-300: #62B4C0; --beacon-500: #1F8A9B; --verdant-300: #63B77F; --amber-300: #E6B24C; --ember-300: #EF8A66;
-  --sim-300: #E477BF; --sim-500: #C0308F;
+  --sim-300: #E477BF; --sim-500: #C0308F; --sky-300: #7FB0FF;
   --ui: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
 }
@@ -40,12 +40,12 @@ canvas { display: block; width: 100%; height: auto; }
 .g { display: inline-block; width: 14px; height: 14px; flex: none; }
 .g--bridge { background: var(--beacon-300); }
 .g--relay { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 13px solid var(--amber-300); }
-.g--unit { background: var(--verdant-300); border-radius: 50%; }
+.g--unit { background: var(--sky-300); border-radius: 50%; }
 .g--sett { border-radius: 50%; border: 2px solid var(--n5); background: #665D91; }
 .g--link, .g--route, .g--base, .g--pair, .g--ferry { height: 0; width: 22px; border-top: 2px solid rgba(139,145,155,.6); }
 .g--route { border-top-color: var(--beacon-300); }
 .g--base { border-top-color: var(--n6); border-top-style: dashed; }
-.g--pair { border-top-color: var(--verdant-300); }
+.g--pair { border-top-color: var(--sky-300); }
 .g--ferry { border-top: 2px dashed var(--sim-300); }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .hint { color: var(--n6); font-size: 12px; margin: 8px 0 0; }
@@ -54,7 +54,7 @@ canvas { display: block; width: 100%; height: auto; }
 .stats dd { margin: 0; font-family: var(--mono); }
 .alloc { display: grid; gap: 10px; }
 .alloc__head { font-size: 12px; margin-bottom: 4px; padding-left: 8px; border-left: 3px solid; }
-.alloc__head--h { border-color: var(--verdant-300); }
+.alloc__head--h { border-color: var(--sky-300); }
 .alloc__head--a { border-color: var(--amber-300); }
 .alloc ul { margin: 0; padding: 0 0 0 8px; list-style: none; font-size: 12px; }
 .alloc li.pair { color: var(--n6); }

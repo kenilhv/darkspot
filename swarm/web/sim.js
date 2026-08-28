@@ -7,11 +7,11 @@ import { buildScenario, SimEngine } from '../src/engine.js';
 
 const C = {
   bg: '#171A1F', grid: 'rgba(255,255,255,0.04)',
-  bridge: '#62B4C0', relay: '#E6B24C', unit: '#63B77F', settlement: '#85817A',
+  bridge: '#62B4C0', relay: '#E6B24C', unit: '#7FB0FF' /* sky-300: unreserved (verdant = human-verified only, D-16) */, settlement: '#85817A',
   link: 'rgba(139,145,155,0.35)', linkStrong: 'rgba(139,145,155,0.8)',
   route: '#62B4C0', routeBase: '#8B919B', packet: '#FFFFFF', ferry: '#E477BF', label: '#F7F6F2',
   silence: ['#F3F1EC', '#DBD8E3', '#B9B2CF', '#918AB4', '#665D91', '#3E3568', '#1C1740'], silenceRing: '#8F959E',
-  particle: 'rgba(230,178,76,0.25)', range: 'rgba(230,178,76,0.08)', flash: '#BFE3C9',
+  particle: 'rgba(230,178,76,0.25)', range: 'rgba(230,178,76,0.08)', flash: '#FFFFFF',
 };
 const silenceStep = (h) => { let s = 0; for (const e of [1, 3, 6, 12, 24, 48]) if (h >= e) s++; return Math.min(s, 6); };
 
@@ -164,6 +164,7 @@ function updatePanels() {
   }
   const log = $('log'); log.innerHTML = '';
   for (const e of snap.events.slice(0, 12)) { const li = document.createElement('li'); li.innerHTML = `<span class="t">t${e.tick}</span>`; li.append(e.msg); log.append(li); }
+  $('alloc-note').textContent = snap.alloc?.note ?? '';
   $('canvas-desc').textContent = snap.phase === 'placing'
     ? `Placing ${engine.sc.relayCount} simulated relays by particle swarm optimisation, tick ${snap.tick}.`
     : `Mesh formed. ${snap.alloc?.suggested_pairings.length ?? 0} suggested unit–task pairings; ${snap.alloc?.unitsWithoutCommand.length ?? 0} unit(s) without a path to command. Simulation only.`;
