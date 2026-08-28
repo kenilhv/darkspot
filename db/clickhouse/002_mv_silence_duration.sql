@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS darkspot.silence_state
     report_count       AggregateFunction(count, UInt64)
 )
 ENGINE = AggregatingMergeTree
+PARTITION BY disaster_event_id
 ORDER BY (disaster_event_id, settlement_pcode);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS darkspot.mv_silence_duration
