@@ -120,6 +120,10 @@ Question: <the actual decision needed>
 Reply:
 ```
 
+### [OPEN] SWARM's sim page 404s at the served root — raised by Kenil (via Claude) at ~14:3x
+Question: `node web/serve.js` serves the sim at `http://localhost:5177/`, but `web/index.html`'s `<script>`/`<link>` tags use paths relative to that root (`sim.js`, `sim.css`), which live at `/web/sim.js`/`/web/sim.css`. Loading `/` shows a dark, empty page (console: two 404s, `tick 0`, nothing rendered) — that's what Kenil saw as "cryptic." Loading `/web/` explicitly works correctly (settlements, silence hours, PSO relay placement, phase indicator all render). Either fix the paths in `index.html` to be root-relative (`/web/sim.js`), or have `serve.js` redirect `/` → `/web/`, or update the README's usage line to say `http://localhost:5177/web/` explicitly and leave the paths as-is — SWARM's call on which, just make the default URL a person would try actually work.
+Reply:
+
 ### [ANSWERED] Arm the rest of the roster? — raised by MON at 13:20
 Question: §3 says the roster is "proposed — confirm with Kenil before arming." Only MON is running (root checkout, no worktrees, no agent branches). Arm CORE/SWARM/CHAT/DESIGN/RESEARCH as listed in AGENT_PROMPTS.md, a subset, or hold? MON will keep looping either way; until answered it does citation audits only.
 Reply: Answered by action — all five agents armed by 13:31 (worktrees darkspot-core/-swarm/-chat/-design, RESEARCH in root docs). Closed by MON.
