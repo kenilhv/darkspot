@@ -198,7 +198,8 @@ $('ev-bump').onclick = () => {
   const assigned = new Set(engine.alloc?.suggested_pairings.map((p) => p.taskId));
   const comp = engine._components(engine.net), bc = comp.get('bridge');
   const s = engine.sc.settlements.filter((x) => !assigned.has(x.id) && comp.get(x.id) === bc).sort((a, b) => a.priority - b.priority)[0] ?? engine.sc.settlements[0];
-  engine.bumpPriority(s.id, 8); updatePanels();
+  const top = Math.max(...engine.sc.settlements.map((x) => x.priority));
+  engine.bumpPriority(s.id, (top * 2) / s.priority); updatePanels();
 };
 $('ev-restore').onclick = () => { engine.restore(); updatePanels(); };
 if (reduced) { $('btn-step').focus(); }
