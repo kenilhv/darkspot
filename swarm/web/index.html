@@ -13,7 +13,7 @@
   <!-- Rule 4: this banner is not optional and has no close control. -->
   <div class="banner" role="note" aria-label="Simulation notice">
     <span class="banner__tag">SIMULATION</span>
-    <span>Relay placement, routing and task allocation shown here are simulated outputs on a synthetic, seeded scenario. No aircraft is flying; nothing here is an instruction to anyone.</span>
+    <span id="banner-text">Relay placement, routing and task allocation shown here are simulated outputs on a synthetic, seeded scenario. No aircraft is flying; nothing here is an instruction to anyone.</span>
   </div>
 
   <header class="top">
@@ -25,6 +25,12 @@
       <button id="btn-run" class="btn btn--primary" type="button" aria-pressed="false">Run</button>
       <button id="btn-step" class="btn" type="button">Step</button>
       <button id="btn-reset" class="btn" type="button">Reset</button>
+      <label class="speed">data
+        <select id="dataset" aria-label="Scenario data source">
+          <option value="synthetic" selected>synthetic (seeded)</option>
+          <option value="npl">Nepal EMSR927 — CORE priority_rank (real units)</option>
+        </select>
+      </label>
       <label class="speed">speed
         <select id="speed" aria-label="Ticks per second">
           <option value="1">1 tick/s</option><option value="2" selected>2 ticks/s</option><option value="4">4 ticks/s</option><option value="8">8 ticks/s</option>

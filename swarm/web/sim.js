@@ -4,6 +4,7 @@
  * Colours mirror @darkspot/ui tokens.ts `sim` (DESIGN c9fd80d).
  */
 import { buildScenario, SimEngine } from '../src/engine.js';
+import { scenarioFromPriorityRank } from '../src/adapter.js';
 
 const C = {
   bg: '#171A1F', grid: 'rgba(255,255,255,0.04)',
@@ -24,8 +25,18 @@ canvas.width = W * dpr; canvas.height = H * dpr; ctx.scale(dpr, dpr);
 let engine, snap, running = false, tps = 2, lastTick = 0, flashUntil = new Map();
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+let dataset = 'synthetic', fixture = null;
+const BANNER = {
+  synthetic: 'Relay placement, routing and task allocation shown here are simulated outputs on a synthetic, seeded scenario. No aircraft is flying; nothing here is an instruction to anyone.',
+  npl: 'Settlements, centroids, silence hours and priority ranks are real rows from CORE (HDX COD-AB Nepal, EMSR927 scope). Every row is never_heard: "silent" here means DarkSpot has no coverage there yet, not that a settlement went quiet. Relays, radio range, routing, allocation and the ferry route are simulated. No aircraft is flying; nothing here is an instruction to anyone.',
+};
+function makeScenario() {
+  if (dataset === 'npl' && fixture) return scenarioFromPriorityRank(fixture.rows, { width: W, height: H, rangeKm: 12, maxSettlements: 30 });
+  return buildScenario({ seed: 7, width: W, height: H });
+}
 function reset() {
-  engine = new SimEngine(buildScenario({ seed: 7, width: W, height: H }));
+  engine = new SimEngine(makeScenario());
+  $('banner-text').textContent = BANNER[dataset === 'npl' && fixture ? 'npl' : 'synthetic'];
   snap = engine.snapshot(); lastTick = performance.now(); flashUntil = new Map();
   running = false; $('btn-run').textContent = 'Run'; $('btn-run').setAttribute('aria-pressed', 'false');
   updatePanels();
@@ -131,7 +142,7 @@ function draw(now) {
     ctx.fillStyle = C.silence[st]; ctx.strokeStyle = st >= 4 ? C.silenceRing : C.settlement; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(s.x, s.y, 6 + Math.min(6, s.priority), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     if (s.hazard === 'high') { ctx.strokeStyle = '#EF8A66'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(s.x, s.y, 10 + Math.min(6, s.priority), 0, Math.PI * 2); ctx.stroke(); }
-    label(`${s.id} ${s.silenceHours}h`, s.x + 14, s.y, '#B9B2CF');
+    if (!s.rank || s.rank <= 12) label(`${s.name ?? s.id} ${Math.round(s.silenceHours)}h${s.neverHeard ? ' · never heard' : ''}`, s.x + 14, s.y, '#B9B2CF');
   }
   // bridge
   ctx.fillStyle = C.bridge; ctx.fillRect(sc.bridge.x - 9, sc.bridge.y - 9, 18, 18); label('bridge', sc.bridge.x + 14, sc.bridge.y, C.bridge);
@@ -145,6 +156,8 @@ function updatePanels() {
   $('phase').textContent = snap.phase === 'placing' ? 'phase: placing relays (PSO)' : 'phase: mesh formed · routing + allocation live';
   const st = $('stats'); st.innerHTML = '';
   const add = (k, v) => { const dt = document.createElement('dt'); dt.textContent = k; const dd = document.createElement('dd'); dd.textContent = v; st.append(dt, dd); };
+  if (engine.sc.meta) add('data', `${engine.sc.meta.rows}/${engine.sc.meta.of} CORE priority_rank rows · range ${engine.sc.meta.rangeKm} km (scenario parameter, not measured) · ${engine.sc.meta.pxPerKm.toFixed(1)} px/km`);
+  else add('data', 'synthetic seeded scenario');
   add('relay fitness', `${snap.psoFitness.toFixed(3)} · SGC ${snap.psoEval.sgc}/${engine.sc.relayCount} · covered ${snap.psoEval.ncmc}/${engine.sc.settlements.length}`);
   if (snap.metrics) {
     add('AntHocNet', `delivery ${(snap.metrics.ant.delivery * 100).toFixed(0)}% · delay ${snap.metrics.ant.meanDelayMs?.toFixed(1) ?? '—'} ms`);
@@ -175,6 +188,11 @@ $('btn-run').onclick = () => { running = !running; $('btn-run').textContent = ru
 $('btn-step').onclick = () => step();
 $('btn-reset').onclick = () => reset();
 $('speed').onchange = (e) => { tps = Number(e.target.value); };
+async function loadFixture() {
+  if (fixture) return fixture;
+  const res = await fetch('../data/npl_priority_rank_fixture.json'); fixture = await res.json(); return fixture;
+}
+$('dataset').onchange = async (e) => { dataset = e.target.value; if (dataset === 'npl') await loadFixture(); reset(); };
 // Pick the live relay carrying the most AntHocNet traffic this tick, so the reaction is visible.
 // For a cut, skip relays whose loss would strand the bridge entirely (keeps the demo readable).
 function pickRelay(forCut = false) {
@@ -209,6 +227,7 @@ reset();
 // Reproducible headless verification: ?steps=N&perturb=cut|congest|bump (&steps2=M after the perturbation)
 {
   const q = new URLSearchParams(location.search);
+  if (q.get('data') === 'npl') { await loadFixture(); dataset = 'npl'; $('dataset').value = 'npl'; reset(); }
   const n = Number(q.get('steps') ?? 0); for (let i = 0; i < n; i++) step();
   const ev = q.get('perturb'); if (ev === 'cut') $('ev-cut').click(); else if (ev === 'congest') $('ev-congest').click(); else if (ev === 'bump') $('ev-bump').click();
   const n2 = Number(q.get('steps2') ?? 0); for (let i = 0; i < n2; i++) step();

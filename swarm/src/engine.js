@@ -107,7 +107,8 @@ export class SimEngine {
     const comp = this._components(this.net);
     const bc = comp.get('bridge');
     const cut = this.sc.settlements.filter((s) => comp.get(s.id) !== bc);
-    this.ferry = cut.length ? ferryRouteRow({ routeId: `sim-${this.sc.seed}-${this.tick}`, start: this.sc.bridge, targets: cut, relays: this.relays }) : null;
+    const geo = this.sc.unproject ? this.relays.map((r) => ({ ...r, ...this.sc.unproject(r.x, r.y) })) : this.relays;
+    this.ferry = cut.length ? ferryRouteRow({ routeId: `sim-${this.sc.seed}-${this.tick}`, disasterEventId: this.sc.meta?.disaster_event_id ?? null, start: this.sc.bridge, targets: cut, relays: geo }) : null;
     if (this.ferry) this.log(`${cut.length} settlement(s) have no mesh path to the bridge; a message-ferry tour is shown — SIMULATION, no aircraft involved.`);
   }
 
