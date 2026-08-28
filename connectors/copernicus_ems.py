@@ -34,7 +34,7 @@ from shapely.ops import unary_union
 from shapely.strtree import STRtree
 
 from .db import pg
-from .hdx_cod import CACHE_DIR, _cached_download
+from .hdx_cod import CACHE_DIR, HDX_HEADERS, _cached_download
 
 HDX_SEARCH = "https://data.humdata.org/api/3/action/package_search?q={q}&rows=20"
 
@@ -42,7 +42,7 @@ HDX_SEARCH = "https://data.humdata.org/api/3/action/package_search?q={q}&rows=20
 # --------------------------------------------------------------------------- discovery
 def discover_ems_vector_bundles(ems_ref: str) -> list[dict]:
     """HDX resources (format SHP, zipped vectors) for a Copernicus activation code."""
-    r = requests.get(HDX_SEARCH.format(q=ems_ref), timeout=60)
+    r = requests.get(HDX_SEARCH.format(q=ems_ref), timeout=60, headers=HDX_HEADERS)
     r.raise_for_status()
     out = []
     for pkg in r.json()["result"]["results"]:

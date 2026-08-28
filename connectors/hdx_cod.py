@@ -34,12 +34,14 @@ from . import geohash
 from .db import pg
 
 HDX_API = "https://data.humdata.org/api/3/action/package_show?id={slug}"
+# HDX CKAN returns 403 to some default client UAs (RESEARCH 2026-08-28); identify ourselves explicitly.
+HDX_HEADERS = {"User-Agent": "DarkSpot-CORE/0.1 (+https://github.com/darkspot; HDX COD connector)"}
 CACHE_DIR = os.environ.get("DARKSPOT_CACHE_DIR", os.path.join(os.path.dirname(__file__), "..", "data", "cache"))
 
 
 # --------------------------------------------------------------------------- HDX fetch
 def hdx_package(slug: str) -> dict:
-    r = requests.get(HDX_API.format(slug=slug), timeout=60)
+    r = requests.get(HDX_API.format(slug=slug), timeout=60, headers=HDX_HEADERS)
     r.raise_for_status()
     body = r.json()
     if not body.get("success"):
@@ -51,7 +53,7 @@ def _cached_download(url: str, filename: str) -> str:
     os.makedirs(CACHE_DIR, exist_ok=True)
     path = os.path.join(CACHE_DIR, filename)
     if not os.path.exists(path):
-        with requests.get(url, stream=True, timeout=600) as r:
+        with requests.get(url, stream=True, timeout=600, headers=HDX_HEADERS) as r:
             r.raise_for_status()
             with open(path, "wb") as f:
                 for chunk in r.iter_content(1 << 20):
