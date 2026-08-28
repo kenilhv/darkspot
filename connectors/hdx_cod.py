@@ -101,6 +101,24 @@ def parse_cod_ab_xlsx(path: str) -> dict[int, list[dict]]:
     return out
 
 
+def polygon_points(zip_path: str, level: int) -> dict[str, tuple[float, float]]:
+    """-> {pcode: (lat, lon)} representative points of the COD-AB polygon layer for one level (fallback when
+    the adminpoints layer lags the polygon revision, e.g. BGD 2020 points vs 2023 polygons)."""
+    from shapely.geometry import shape
+    with zipfile.ZipFile(zip_path) as z:
+        names = [n for n in z.namelist() if re.fullmatch(rf"[a-z]{{3}}_admin{level}\.geojson", n)]
+        if len(names) != 1:
+            return {}
+        data = json.load(io.TextIOWrapper(z.open(names[0]), encoding="utf-8"))
+    out = {}
+    for f in data["features"]:
+        pcode = f["properties"].get(f"adm{level}_pcode")
+        if pcode:
+            pt = shape(f["geometry"]).representative_point()
+            out[str(pcode).strip()] = (pt.y, pt.x)
+    return out
+
+
 def parse_adminpoints(zip_path: str) -> dict[str, tuple[float, float]]:
     """-> {pcode: (lat, lon)} from the COD-AB *adminpoints* GeoJSON layer (official per-unit points)."""
     with zipfile.ZipFile(zip_path) as z:
@@ -148,16 +166,24 @@ def load_country(iso3: str, *, max_level: int | None = None) -> dict:
     ab_xlsx = _pick(ab["resources"], r"\.xlsx$")
     ab_geo = _pick(ab["resources"], r"geojson\.zip$")
     units_by_level = parse_cod_ab_xlsx(_cached_download(ab_xlsx["url"], f"{iso3.lower()}_cod_ab.xlsx"))
-    points = parse_adminpoints(_cached_download(ab_geo["url"], f"{iso3.lower()}_cod_ab_geojson.zip"))
+    geo_path = _cached_download(ab_geo["url"], f"{iso3.lower()}_cod_ab_geojson.zip")
+    points = parse_adminpoints(geo_path)
 
     ps = hdx_package(f"cod-ps-{iso3.lower()}")
-    pop_by_level: dict[int, tuple[dict[str, int], int, str]] = {}
+    # COD-PS often ships several reference years per level (PHL: 2022+2023, MOZ: 2024+2025). Pick the LATEST
+    # year per level deterministically — never "whichever resource the API listed last".
+    candidates: dict[int, list[tuple[int, dict]]] = {}
     for res in ps["resources"]:
-        m = re.search(r"adm(\d)[^/]*\.csv$", res.get("name", ""), re.I)
+        m = re.search(r"adm(\d)_(\d{4})[^/]*\.csv$", res.get("name", ""), re.I)
         if m:
-            lvl = int(m.group(1))
-            pops, year = parse_cod_ps_csv(_cached_download(res["url"], f"{iso3.lower()}_cod_ps_adm{lvl}.csv"), lvl)
-            pop_by_level[lvl] = (pops, year, res["url"])
+            candidates.setdefault(int(m.group(1)), []).append((int(m.group(2)), res))
+    pop_by_level: dict[int, tuple[dict[str, int], int, str]] = {}
+    for lvl, opts in candidates.items():
+        year_in_name, res = max(opts, key=lambda t: t[0])
+        pops, year = parse_cod_ps_csv(_cached_download(res["url"], f"{iso3.lower()}_cod_ps_adm{lvl}_{year_in_name}.csv"), lvl)
+        if year != year_in_name:
+            raise RuntimeError(f"{res['name']}: filename year {year_in_name} != data year {year}, refusing to guess")
+        pop_by_level[lvl] = (pops, year, res["url"])
 
     ab_url = f"https://data.humdata.org/dataset/cod-ab-{iso3.lower()}"
     stats = {"iso3": iso3, "cod_ab_last_modified": ab.get("last_modified"), "cod_ps_last_modified": ps.get("last_modified"),
@@ -167,34 +193,49 @@ def load_country(iso3: str, *, max_level: int | None = None) -> dict:
             if max_level is not None and lvl > max_level:
                 continue
             pops, year, ps_url = pop_by_level.get(lvl, ({}, None, None))
-            n_pop = n_pt = 0
+            unit_pcodes = {u["pcode"] for u in units}
+            pop_matched = len(unit_pcodes & set(pops)) if pops else 0
+            pt_matched = len(unit_pcodes & set(points))
+            fallback = polygon_points(geo_path, lvl) if pt_matched < len(units) else {}
+            n_pop = n_pt = n_fb = 0
             for u in units:
+                src = "cod-ab-adminpoints"
                 latlon = points.get(u["pcode"])
+                if latlon is None and u["pcode"] in fallback:
+                    latlon, src = fallback[u["pcode"]], "cod-ab-polygon-representative-point"
+                    n_fb += 1
                 pop = pops.get(u["pcode"]) if pops else None
                 n_pop += pop is not None
                 n_pt += latlon is not None
                 cur.execute(
                     """
                     INSERT INTO admin_units (country_iso3, granularity_level, pcode, name, parent_pcode,
-                        population, population_year, centroid_lat, centroid_lon, geohash,
+                        population, population_year, centroid_lat, centroid_lon, geohash, centroid_source,
                         source_dataset, source_url, source_retrieved)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (country_iso3, granularity_level, pcode) DO UPDATE SET
                         name = EXCLUDED.name, parent_pcode = EXCLUDED.parent_pcode,
                         population = EXCLUDED.population, population_year = EXCLUDED.population_year,
                         centroid_lat = EXCLUDED.centroid_lat, centroid_lon = EXCLUDED.centroid_lon, geohash = EXCLUDED.geohash,
+                        centroid_source = EXCLUDED.centroid_source,
                         source_dataset = EXCLUDED.source_dataset, source_url = EXCLUDED.source_url, source_retrieved = EXCLUDED.source_retrieved
                     """,
                     (iso3, lvl, u["pcode"], u["name"], u["parent_pcode"],
                      pop, year if pop is not None else None,
                      latlon[0] if latlon else None, latlon[1] if latlon else None,
-                     geohash.encode(*latlon) if latlon else None,
+                     geohash.encode(*latlon) if latlon else None, src if latlon else None,
                      f"cod-ab-{iso3.lower()}" + (f"+cod-ps-{iso3.lower()}" if pop is not None else ""),
                      ab_url + (f" ; {ps_url}" if pop is not None else ""),
                      retrieved),
                 )
-            stats["levels"][lvl] = {"units": len(units), "with_population": n_pop, "with_point": n_pt,
-                                    "population_year": year if n_pop else None}
+            lvl_stats = {"units": len(units), "with_population": n_pop, "with_point": n_pt,
+                         "point_from_polygon_fallback": n_fb, "population_year": year if n_pop else None}
+            if pops and pop_matched == 0:
+                # COD-PS and COD-AB disagree on the pcode scheme at this level (e.g. BGD ADM3: PS 2022 uses the
+                # 2020 codes, AB xlsx/polygons use the 2023 revision). Population stays NULL — never remapped by guess.
+                lvl_stats["population_pcode_scheme_mismatch"] = {
+                    "cod_ps_rows": len(pops), "sample_ab": sorted(unit_pcodes)[:2], "sample_ps": sorted(pops)[:2]}
+            stats["levels"][lvl] = lvl_stats
     return stats
 
 

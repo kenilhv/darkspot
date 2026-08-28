@@ -37,9 +37,15 @@ print("\nlevel | source_rows(COD-AB xlsx) | db_units | db_with_pop | db_pop_sum 
 for lvl in sorted(ab):
     src_rows = len(ab[lvl])
     src_pop = None
-    for f in glob.glob(os.path.join(CACHE_DIR, f"{iso3.lower()}_cod_ps_adm{lvl}.csv")):
+    ps_overlap = None
+    for f in sorted(glob.glob(os.path.join(CACHE_DIR, f"{iso3.lower()}_cod_ps_adm{lvl}_*.csv")))[-1:]:
         with open(f, encoding="utf-8-sig", newline="") as fh:
-            src_pop = sum(int(float(r["T_TL"])) for r in csv.DictReader(fh))
+            rows = list(csv.DictReader(fh))
+        src_pop = sum(int(float(r["T_TL"])) for r in rows)
+        ps_overlap = len({r[f"ADM{lvl}_PCODE"].strip() for r in rows} & {u["pcode"] for u in ab[lvl]})
+        if ps_overlap == 0:
+            print(f"  level {lvl}: COD-PS pcodes share NOTHING with COD-AB pcodes at this level (scheme mismatch) -> population honestly NULL, not compared")
+            src_pop = None
     d = db.get(lvl)
     db_units, db_pop_n, db_pop, db_pts, ret = (d[1], d[2], d[3], d[4], d[5]) if d else (0, 0, None, 0, None)
     line_ok = db_units == src_rows and (src_pop is None or db_pop == src_pop)

@@ -1,0 +1,22 @@
+# HDX load verification — BGD — run 2026-08-28T21:11:09+00:00
+cod-ab-bgd: 'Bangladesh - Subnational Administrative Boundaries' | dataset_date=[2023-05-21T00:00:00 TO 2025-06-01T23:59:59] | last_modified=2026-01-26T15:14:12.782628 | org=OCHA Field Information Services Section (FISS)
+   resource bgd_admin_boundaries.gdb.zip | Geodatabase | last_modified=2026-01-26T15:14:11.073776
+   resource bgd_admin_boundaries.shp.zip | SHP | last_modified=2026-01-26T15:14:11.667847
+   resource bgd_admin_boundaries.geojson.zip | GeoJSON | last_modified=2026-01-26T15:14:12.378717
+   resource bgd_admin_boundaries.xlsx | XLSX | last_modified=2026-01-26T15:14:12.782628
+cod-ps-bgd: 'Bangladesh - Subnational Population Statistics' | dataset_date=[2022-01-01T00:00:00 TO 2022-12-31T23:59:59] | last_modified=2023-04-04T19:22:32.656852 | org=UNFPA
+   resource BGD_AdminBoundaries_TabularData.xlsx | XLSX | last_modified=2023-04-04T19:22:32.656852
+   resource bgd_admpop_2022.xlsx | XLSX | last_modified=2023-01-11T17:52:46.474277
+   resource bgd_admpop_adm0_2022.csv | CSV | last_modified=2023-01-11T17:52:50.247576
+   resource bgd_admpop_adm1_2022.csv | CSV | last_modified=2023-01-11T17:52:52.629007
+   resource bgd_admpop_adm2_2022.csv | CSV | last_modified=2023-01-11T17:52:54.656989
+   resource bgd_admpop_adm3_2022.csv | CSV | last_modified=2023-01-11T17:52:56.618145
+
+level | source_rows(COD-AB xlsx) | db_units | db_with_pop | db_pop_sum | source_pop_sum(COD-PS csv) | db_with_point | retrieved
+    0 |                        1 |        1 |           1 |  165650475 |                  165650475 |             1 | 2026-08-28 21:11:05.232147+00:00  OK
+    1 |                        8 |        8 |           8 |  165650475 |                  165650475 |             8 | 2026-08-28 21:11:05.232147+00:00  OK
+    2 |                       64 |       64 |          64 |  165650475 |                  165650475 |            64 | 2026-08-28 21:11:05.232147+00:00  OK
+  level 3: COD-PS pcodes share NOTHING with COD-AB pcodes at this level (scheme mismatch) -> population honestly NULL, not compared
+    3 |                      507 |      507 |           0 |       None |                       None |           507 | 2026-08-28 21:11:05.232147+00:00  OK
+
+TOTAL admin_units(BGD) = 580   RESULT: PASS
