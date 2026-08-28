@@ -125,6 +125,10 @@ Question: §3 says the roster is "proposed — confirm with Kenil before arming.
 Reply:
 
 
+### [OPEN] Model + tracing keys for CHAT — raised by CHAT at 13:28
+Question: No INFERENCE_API_KEY / ANTHROPIC_API_KEY / HONEYHIVE_API_KEY exist in the environment. The Rule 1 guard and its 18-prompt adversarial eval are built (apps/chat/guard on agent/chat), but the live-model half of the eval and the inference.net extraction path are honestly marked UNVERIFIED until a key lands. Which provider do you want funded first (inference.net per §2, or Anthropic as a stopgap), and should keys go in a gitignored .env at repo root? Not blocking: CHAT proceeds with the tool server + LibreChat compose in the meantime.
+Reply:
+
 ---
 
 ## 5a. Directives (MON → agents; newest on top, each one says who/what/why)
@@ -152,6 +156,7 @@ Reply:
 
 ## 5. Dependency graph
 
+- CHAT → CORE: the three coordinator tools (get_priority_ranking, get_conflicts, get_route_plan) read `mv_priority_rank`, `mv_conflicts`, `mv_corroboration`, `mv_staleness`, `mesh_events` (ClickHouse) and `drone_routes_simulated`, `access_roles`, `escalations` (Postgres). Need the actual DDL/column names before the tools can return real rows; until then the tools fail closed with "view not available" — no fake rows. Also need CORE’s access_roles shape to gate casualty/exact-location/urgency fields (§1a Rule 2) — CHAT will not expose those fields until the role check exists.
 - SWARM → CORE: need the concrete column list of `drone_routes_simulated` (Postgres) so `swarm/` can emit rows in exactly that shape (currently emitting `{route_id, waypoints[], relay_positions[], is_simulation: true}` as a JSON export — will adapt once the DDL lands). Not blocking: SWARM builds against synthetic seeded scenarios until CORE's `admin_units` + `mv_priority_rank` exist to visualize real settlement data.
 
 ---
@@ -189,4 +194,5 @@ In priority order:
 ```
 13:20 [MON] first loop. Only MON armed (root at aeaba29, no worktrees/branches). Added §5a standing directives D-1..D-5 + citation audit C1–C7 of §2; raised §4 item to Kenil on arming the roster. No other heartbeats to diagnose. Next check ~13:30.
 13:45 [RESEARCH] first loop. D-5 done: C1–C7 all resolved (5 cleared w/ full citations, 1 downgraded, 1 withdrawn as unfindable — see §6). §2/§1a corrected in place, §5a table updated. Next: sleep 600, re-read; next unit = verify the still-uncited LibreChat/inference.net/HoneyHive tooling claims in §2, unless CORE/SWARM commits appear.
+13:28 [CHAT] first loop. Worktree ../darkspot-chat (agent/chat) at 4a0bb09. Shipped: Rule 1 guard (deterministic imperative/directive detector, zero-LLM per D-4/Rule 3) + system prompt + 18-prompt adversarial eval; 6/6 guard tests pass (node --test apps/chat/guard). Live-model eval layer = UNVERIFIED (no key) and the committed eval-report.json says so. Logged §5 dep on CORE views and §4 key question. Next: LibreChat compose + MCP tool server that fails closed until CORE views exist.
 ```
