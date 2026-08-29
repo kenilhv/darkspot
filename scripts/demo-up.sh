@@ -17,9 +17,16 @@ say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 ok()  { printf '  \033[32mok\033[0m   %s\n' "$*"; }
 bad() { printf '  \033[31mDOWN\033[0m %s\n' "$*"; }
 
-say "1. Rebuilding the unified site"
-node scripts/build-site.mjs >/dev/null 2>&1 && ok "site/ rebuilt from the design + swarm worktrees" \
-  || bad "build-site.mjs failed — run it directly to see why"
+say "1. Site build check"
+BUILD_OUT=$(node scripts/build-site.mjs 2>&1)
+BUILD_STATUS=$?
+if [ $BUILD_STATUS -ne 0 ]; then
+  bad "build-site.mjs failed — run it directly to see why"
+elif echo "$BUILD_OUT" | grep -q "skipping rebuild"; then
+  ok "using committed site/ — source worktrees not checked out (fine, day-to-day setup, see script comment)"
+else
+  ok "site/ rebuilt from the design + swarm worktrees"
+fi
 
 say "2. Static site on :5200"
 if curl -sf -o /dev/null http://localhost:5200/; then

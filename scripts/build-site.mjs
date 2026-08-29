@@ -26,12 +26,18 @@ const site = join(root, 'site');
 const exists = async (p) => { try { await access(p); return true; } catch { return false; } };
 const log = (...a) => console.log('[build-site]', ...a);
 
+// The sibling worktrees only need to exist when you're actually rebuilding from source (i.e. you
+// changed something in agent/design-system or agent/swarm). site/ itself is committed, so day-to-day
+// the demo runs fine without either worktree checked out - re-add one only when you need to edit its
+// source: `git worktree add ../darkspot-design agent/design-system` (same for darkspot-swarm).
+const missing = [];
 for (const [name, p] of [['design', DESIGN], ['swarm', SWARM]]) {
-  if (!(await exists(p))) {
-    console.error(`[build-site] missing ${name} worktree at ${p}`);
-    console.error('  Both sibling worktrees must be checked out. See COORDINATION.md §5a D-1.');
-    process.exit(1);
-  }
+  if (!(await exists(p))) missing.push(name);
+}
+if (missing.length) {
+  log(`skipping rebuild - ${missing.join(' and ')} worktree(s) not checked out; site/ (already built, already committed) is untouched and still serves fine.`);
+  log('re-add the worktree(s) above only if you actually need to edit coordinator or sim source.');
+  process.exit(0);
 }
 
 // 1. Coordinator — real Vite build, not a copy of a stale dist-demo.
